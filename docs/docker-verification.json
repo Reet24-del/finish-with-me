@@ -1,0 +1,30 @@
+{
+  "at": "2026-11-08T18:54:16.683Z",
+  "synthetic": true,
+  "health": {
+    "ok": true,
+    "mode": "iris-configured",
+    "irisVerified": true,
+    "capabilities": [
+      "receipt-total",
+      "linear-equations"
+    ],
+    "message": "IRIS AI Hub is responding."
+  },
+  "taskId": "cf07f014-5fac-4bb3-a129-6f83a365236d",
+  "status": "completed",
+  "trace": [
+    {
+      "attempt": 1,
+      "passed": 8,
+      "total": 8,
+      "toolsUsed": [
+        "InspectTask",
+        "PrepareCandidate"
+      ]
+    }
+  ],
+  "persistedAfterAppRestart": true,
+  "frontendHTTP": 200,
+  "assetHTTP": 200
+}

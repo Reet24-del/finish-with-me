@@ -2,7 +2,7 @@
 
 **A small-step completion coach for the work you keep getting stuck on.** It helps with one concrete piece of a coding project or study session, does useful work alongside you, and only closes the task when there is evidence of a result.
 
-This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. A dedicated AI Hub tool inspects the task and its completion contract. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
+This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. Native AI Hub tools inspect the task and capture a proposed repair without executing it. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
 
 ## Why it exists
 
@@ -66,7 +66,7 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
 
 6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. A coding investigation routes through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
 
-The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=qwen/qwen3.8-27b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
+The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
 ## Workflow
 
@@ -114,6 +114,8 @@ The current completion profiles are `receipt-total` (a JavaScript `total(prices)
 
 Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes, configures the authenticated REST application, and starts the production.
 
-Live verification on build `2027.1.0AI.109.0` succeeded using Groq `qwen/qwen3.8-27b`: the authenticated IRIS REST endpoint routed a synthetic receipt repair through the production, the agent called `InspectTask`, and its candidate passed all eight independent checks before completion. The recorded synthetic result is in [docs/live-verification.json](docs/live-verification.json). This is one verified scenario, not a guarantee that every model response will pass. Use **Revise using failed checks** when a candidate fails.
+Full Docker verification on build `2027.1.0AI.109.0` succeeded using Groq `openai/gpt-oss-120b`: the app called the authenticated IRIS REST endpoint, the production ran `InspectTask` and `PrepareCandidate`, and the candidate passed all eight independent checks before approval. The completed task survived an app-container restart; the frontend and JS bundle both returned HTTP 200. See [docs/docker-verification.json](docs/docker-verification.json). Earlier verification used Qwen, but subsequent runs exposed tool-call reliability issues; the default is now GPT-OSS with a four-iteration tool budget. The earlier synthetic result is in [docs/live-verification.json](docs/live-verification.json). This is one verified scenario, not a guarantee that every model response will pass. Use **Revise using failed checks** when a candidate fails.
 
 Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. Run `node scripts/verify-live.mjs` to repeat the synthetic live scenario with your own key; it permits up to three checked proposals and records the actual outcome. For a host-run app, set `IRIS_BASE_URL=http://127.0.0.1:52773/csp/user/finish/` in `.env`.
+
+To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result.

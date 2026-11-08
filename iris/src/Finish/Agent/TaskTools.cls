@@ -2,6 +2,7 @@ Class Finish.Agent.TaskTools Extends %AI.Tool
 {
 Property TaskContext As %DynamicObject;
 Property InspectionCount As %Integer [ InitialExpression = 0 ];
+Property Proposal As %DynamicObject;
 
 /// Inspect one task and return its concrete completion boundary to the agent.
 Method InspectTask() As %DynamicObject
@@ -26,4 +27,17 @@ Method InspectTask() As %DynamicObject
     }
     Return result
 }
+/// Prepare a repair candidate after inspecting the stored task. This never executes or approves code.
+Method PrepareCandidate(code As %String, summary As %String = "Prepared a repair for independent checks.", nextAction As %String = "Review the candidate and run the agreed checks.") As %DynamicObject
+{
+    If ..InspectionCount < 1 Return {"error":"Call InspectTask first."}
+    If ($Length(code)>12000) || (code="") Return {"error":"Return a nonempty candidate of at most 12000 characters."}
+    If $Find(code,"function total") = 0 Return {"error":"code must contain the JavaScript total function source, not a JSON object or Markdown."}
+    Set ..Proposal = {}
+    Do ..Proposal.%Set("summary",summary)
+    Do ..Proposal.%Set("nextAction",nextAction)
+    Do ..Proposal.%Set("code",code)
+    Return {"prepared":true,"message":"Candidate saved for independent checks. It has not been executed or approved."}
+}
+
 }

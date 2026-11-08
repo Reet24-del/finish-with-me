@@ -9,17 +9,15 @@ Method OnMessage(pRequest As Finish.Message.InvestigateRequest, Output pResponse
         Set agent = ##class(Finish.Agent.CompletionAgent).%New()
         Set agent.TaskContext = payload
         $$$ThrowOnError(agent.%Init())
-        Set session = agent.CreateSession()
-        Set prompt = "Inspect this task and choose a next move. Return strict JSON only. Task JSON: "_payload.%ToJSON()
+        Set session = agent.CreateSession({"max_iterations":4})
+        Set prompt = "InspectTask reads this stored task. Then call PrepareCandidate with the replacement JavaScript function source in its code argument. The caller checks the result. Task JSON: "_payload.%ToJSON()
         Set response = agent.Chat(session,prompt)
-        Set content = response.Content
-        Set first = $Find(content,"{")-1
-        Set last = $Length(content)-$Find($Reverse(content),"}")+2
-        If (first<1) || (last<first) Throw ##class(%Exception.General).%New("The model did not return a JSON decision.")
-        Set decision = {}.%FromJSON($Extract(content,first,last))
+        Set decision = agent.InspectionTools.Proposal
+        If '$IsObject(decision) Throw ##class(%Exception.General).%New("The agent did not prepare a candidate.")
         Set stats = session.GetStats()
         Set toolsUsed = []
         If agent.InspectionTools.InspectionCount > 0 Do toolsUsed.%Push("InspectTask")
+        If $IsObject(decision) Do toolsUsed.%Push("PrepareCandidate")
         Set result = {}
         Do result.%Set("provider","InterSystems IRIS AI Hub")
         Do result.%Set("decision",decision)

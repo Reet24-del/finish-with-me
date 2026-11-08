@@ -22,9 +22,11 @@ ClassMethod Health() As %Status
 ClassMethod Investigate() As %Status
 {
     Try {
+        Set stage = "decode-request"
         Set input = {}.%FromJSON(%request.Content.Read(64000))
         Set request = ##class(Finish.Message.InvestigateRequest).%New()
         Set request.Payload = input
+        Set stage = "create-service"
         Set sc = ##class(Ens.Director).CreateBusinessService("Finish.ApiService",.service)
         If $$$ISERR(sc) {
             Set %response.Status = 500
@@ -34,6 +36,7 @@ ClassMethod Investigate() As %Status
             Write (error.%ToJSON())
             Return $$$OK
         }
+        Set stage = "run-agent"
         Set sc = service.SendRequestSync("Finish.AgentOperation",request,.response,90,"Finish With Me task investigation")
         If $$$ISERR(sc) {
             Set %response.Status = 500
@@ -51,6 +54,8 @@ ClassMethod Investigate() As %Status
         Set %response.ContentType = "application/json; charset=utf-8"
         Set error = {}
         Do error.%Set("error",ex.DisplayString())
+        Do error.%Set("stage",$Get(stage))
+        Do error.%Set("location",ex.Location)
         Write (error.%ToJSON())
         Return $$$OK
     }

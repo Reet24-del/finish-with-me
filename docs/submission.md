@@ -1,6 +1,6 @@
 # Submission preparation
 
-Status: classes compiled on AI Hub Community 2027.1.0AI.109.0; authenticated REST + production + Groq Qwen run verified using synthetic data. InspectTask was called and the returned candidate passed all 8 checks before completion. See live-verification.json. Public repository publication and Open Exchange registration remain.
+Status: full Docker app + authenticated IRIS REST + production + Groq GPT-OSS verified. Both InspectTask and PrepareCandidate were called; the candidate passed all 8 independent checks before approval. Completion persisted after an app-container restart, and frontend/JS requests returned HTTP 200. Public repository published at https://github.com/Reet24-del/finish-with-me. Open Exchange draft saved at https://openexchange.intersystems.com/portal/products/Finish-With-Me/edit; final contest submission is pending acceptance of contest terms.
 
 ## Name
 Finish With Me
