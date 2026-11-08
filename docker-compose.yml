@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     environment:
       IRIS_PASSWORD: ${IRIS_PASSWORD:-SYS}
+      AIHUB_PROVIDER: ${AIHUB_PROVIDER:-groq}
+      AIHUB_MODEL: ${AIHUB_MODEL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "52773:52773"

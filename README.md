@@ -35,7 +35,7 @@ Open [http://localhost:4318](http://localhost:4318). Local mode includes the rul
 
 The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as the newest available build, and that the judges will use the corresponding build for an entry. Download the **AI Hub Community ARM64 image** for Apple Silicon from the [InterSystems Early Access Program portal](https://evaluation.intersystems.com/Eval/early-access/AIHub). Do not publish the downloaded image or an image derived from it.
 
-1. Install and start Docker Desktop. Copy `.env.example` to `.env`, set a private IRIS password, and add your own `OPENAI_API_KEY`. Do not commit `.env`.
+1. Install and start Docker Desktop. Copy `.env.example` to `.env`, set a private IRIS password, and add your own `GROQ_API_KEY`. Do not commit `.env`.
 2. Load the downloaded archive and inspect the loaded tag:
 
    ```sh
@@ -76,7 +76,7 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
 
 7. Open [http://localhost:4318](http://localhost:4318). The header changes to **IRIS CONNECTED** when the app can reach the IRIS API. This confirms connectivity; a successful agent investigation must still be verified. A live coding investigation will be routed through the `Finish.Production` production to `Finish.AgentOperation`.
 
-The app expects an OpenAI key in `OPENAI_API_KEY` inside the IRIS container. The key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
+The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
 ## Workflow
 
@@ -125,3 +125,5 @@ The current completion profiles are `receipt-total` (a JavaScript `total(prices)
 Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes and starts the production; configure the authenticated REST web application as described above.
 
 Live IRIS compilation, provider calls, and the complete Docker installation still require verification with the EAP image. Local passing tests do not establish contest readiness.
+
+Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. A real call on the downloaded EAP build must still be verified once the private Groq key is configured.

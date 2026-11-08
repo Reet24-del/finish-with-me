@@ -13,7 +13,10 @@ if(docker.status===0){
  report(engine.status===0,'Docker engine','Open Docker Desktop and wait for it to start.');
  if(engine.status===0){const image=spawnSync('docker',['image','inspect',process.env.IRIS_IMAGE||'iris-community:2027.1.0AI.109.0'],{stdio:'ignore',timeout:10000});report(image.status===0,'AI Hub image','Download the EAP Community image, load it, and retag it as documented in README.');}
 }
-report(Boolean(process.env.OPENAI_API_KEY?.trim()),'OpenAI API key','Set OPENAI_API_KEY in the ignored .env file.');
+const provider=(process.env.AIHUB_PROVIDER||'groq').toLowerCase();
+const keyName=provider==='groq'?'GROQ_API_KEY':'OPENAI_API_KEY';
+report(['groq','openai'].includes(provider),'LLM provider','Set AIHUB_PROVIDER to groq or openai.');
+report(Boolean(process.env[keyName]?.trim()),`${provider} API key`,`Set ${keyName} in the ignored .env file.`);
 report(Boolean(process.env.IRIS_PASSWORD&& !['SYS','ChangeThisPassword'].includes(process.env.IRIS_PASSWORD)),'IRIS password','Choose your private IRIS password in .env.');
 const remote=spawnSync('git',['remote','get-url','origin'],{cwd:root,encoding:'utf8'});
 report(remote.status===0,'Git remote','Create the project repository under Reet24-del and provide its URL.');
