@@ -74,7 +74,7 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
    - Dispatch class: `Finish.Api`
    - Enable password authentication.
 
-7. Open [http://localhost:4318](http://localhost:4318). The header changes to **AI HUB LIVE** when the app can reach the IRIS API. A live coding investigation will be routed through the `Finish.Production` production to `Finish.AgentOperation`.
+7. Open [http://localhost:4318](http://localhost:4318). The header changes to **IRIS CONNECTED** when the app can reach the IRIS API. This confirms connectivity; a successful agent investigation must still be verified. A live coding investigation will be routed through the `Finish.Production` production to `Finish.AgentOperation`.
 
 The app expects an OpenAI key in `OPENAI_API_KEY` inside the IRIS container. The key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
@@ -117,3 +117,11 @@ Finish With Me focuses on **doing and independently checking the next piece of w
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Implementation scope and verification
+
+The current completion profiles are `receipt-total` (a JavaScript `total(prices)` function) and `linear-equations`. New tasks use one of these profiles. General repository repair, file upload, arbitrary study subjects, and automatic project-wide completion are not implemented. The live agent path is implemented for the code profile; study uses the local guided exercise.
+
+Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes and starts the production; configure the authenticated REST web application as described above.
+
+Live IRIS compilation, provider calls, and the complete Docker installation still require verification with the EAP image. Local passing tests do not establish contest readiness.

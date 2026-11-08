@@ -51,6 +51,7 @@ export function api(store) {
           if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 12,000 characters.');
           task.proposal.code=input.code;task.proposal.hash=hash(input.code);task.stage='prepare';delete task.checks;delete task.evidence;delete task.approvalToken;task.revision++;event(task,'Candidate edited. Run checks again.');
         } else if(action==='check'){
+          if(task.kind!=='coding'||!task.proposal)throw Error('Investigate the coding task before checking it.');
           if(input.code!==undefined){if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 12,000 characters.');task.proposal.code=input.code;task.proposal.hash=hash(input.code);}
           runChecks(task);
         }

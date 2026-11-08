@@ -6,6 +6,7 @@ export const contract = ['Numeric totals', 'Empty input returns zero', 'Invalid 
 export function event(task, message, type='info') { task.events.push({id:randomUUID(),at:new Date().toISOString(),message,type}); }
 export function createTask(input) {
   if (!['coding','study'].includes(input.kind) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 120) throw Error('Choose a task type and a title up to 120 characters.');
+  for (const key of ['description','blocker','tried','source']) if (input[key] !== undefined && (typeof input[key] !== 'string' || input[key].length > 12000)) throw Error('Task fields must be text up to 12,000 characters.');
   const study = input.kind === 'study';
   const task = {id:randomUUID(),title:input.title.trim(),kind:input.kind,profile:study?'linear-equations':'receipt-total',description:input.description || '',blocker:input.blocker || '',tried:input.tried || '',source:study ? '' : input.source || INITIAL_SOURCE,stage:'understand',status:'active',events:[],attempts:[],createdAt:new Date().toISOString(),revision:0};
   event(task, 'Task ready to investigate.'); return task;
