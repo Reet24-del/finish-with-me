@@ -22,7 +22,7 @@ function App(){
   const badge=(kind)=><span className={`kind ${kind}`}>{kind==='coding'?<Code2 size={13}/>:<BookOpen size={13}/>} {kind==='coding'?'PROJECT':'STUDY'}</span>;
   return <div className="app">
     <header className="topbar"><a className="brand" onClick={()=>setSelected(null)}><span className="brand-icon"><Leaf size={17}/></span> finish<span className="brand-light">with me</span></a><nav className="topnav" aria-label="Page sections"><a href="#how-it-works">How it works</a><a href="#workspace">Your work</a></nav><div className="top-right"><span className={`system ${health.irisVerified?'live':''}`}><i/>{health.irisVerified?'IRIS CONNECTED':'LOCAL MODE'}</span><button className="avatar" title="Your workspace">R</button></div></header>
-    <main className="shell">
+    <main className={active?'shell':'shell landing-shell'}>
       {active? <>
         <button className="back" onClick={()=>{setSelected(null);setError('');setNotice('')}}><ArrowLeft size={15}/> All tasks</button>
         <div className="detail-head"><div>{badge(active.kind)}<h1>{active.title}</h1><p className="sub">{active.description||'A small piece of work, carried through to a checkable result.'}</p></div><div className="detail-actions">{active.status==='completed'?<span className="complete-pill"><CheckCircle2 size={15}/> Completed</span>:<button className="quiet" onClick={()=>setModal(true)}><Plus size={15}/> New task</button>}</div></div>

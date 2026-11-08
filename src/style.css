@@ -41,3 +41,16 @@ body,.app{background:#fff9fe}.app{background:radial-gradient(ellipse 64% 36% at 
 
 .scope-note{font-size:11px;line-height:1.6;color:#705579;background:#f7edf7;padding:10px;border-radius:8px;margin:0 0 15px}
 @media(max-width:380px){.topnav a:last-child{display:none}}
+
+/* Full width landing sections, with readable spacing inside each section. */
+.landing-shell{width:100%;max-width:none;margin:0;padding:0}
+.landing-shell .hero{width:100%;min-height:calc(100svh - 68px);border-radius:0;padding:64px max(5vw,calc((100vw - 1360px)/2));gap:36px}
+.landing-shell .hero-copy{max-width:620px}
+.landing-shell .hero h1{font-size:clamp(64px,7.5vw,112px)}
+.landing-shell .hero-art{height:430px;min-width:0}
+.landing-shell .hero-art:before{width:min(90%,420px);height:390px;right:2%}
+.landing-shell .story{padding:76px max(5vw,calc((100vw - 1360px)/2)) 28px}
+.landing-shell>.workspace-head,.landing-shell>.task-grid,.landing-shell>.add-row,.landing-shell>.home-foot,.landing-shell>.empty,.landing-shell>.alert{margin-left:max(5vw,calc((100vw - 1360px)/2));margin-right:max(5vw,calc((100vw - 1360px)/2))}
+.landing-shell>.home-foot{padding-bottom:30px}
+.topbar{padding-left:max(3vw,24px);padding-right:max(3vw,24px)}
+@media(max-width:760px){.landing-shell .hero{min-height:calc(100svh - 58px);padding:38px 22px 26px;gap:12px}.landing-shell .hero h1{font-size:clamp(56px,13vw,82px)}.landing-shell .hero-art{height:270px}.landing-shell .hero-art:before{width:255px;height:240px;right:7%}.landing-shell .story{padding:44px 22px 18px}.landing-shell>.workspace-head,.landing-shell>.task-grid,.landing-shell>.add-row,.landing-shell>.home-foot,.landing-shell>.empty,.landing-shell>.alert{margin-left:22px;margin-right:22px}.topbar{padding-left:16px;padding-right:16px}}
