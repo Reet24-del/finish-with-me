@@ -49,34 +49,24 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
    docker image tag <loaded-repository>:<loaded-tag> iris-community:2027.1.0AI.109.0
    ```
 
-4. Start the app and IRIS:
+4. Start IRIS, then import and configure the project:
 
    ```sh
-   docker compose up --build -d
+   docker compose up -d iris
+   sh scripts/setup-iris.sh
    ```
 
-5. Import the ObjectScript classes into the `USER` namespace and start the production:
+   Wait for IRIS startup before running the setup script. The script copies the classes into the container, compiles them, sets the local `_SYSTEM` password from `IRIS_PASSWORD`, creates `/csp/user/finish` in `USER` with password authentication, and starts `Finish.Production`. These changes apply to this dedicated local Docker instance. The named IRIS data volume preserves the database. All published ports bind to `127.0.0.1`.
+
+5. Start the frontend and its local backend:
 
    ```sh
-   docker compose exec iris iris session IRIS -U USER
+   docker compose up --build -d app
    ```
 
-   In the IRIS terminal:
+6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. A coding investigation routes through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
 
-   ```objectscript
-   Do $System.OBJ.LoadDir("/iris/src","ck",,1)
-   Do ##class(Ens.Director).StartProduction("Finish.Production")
-   ```
-
-6. In the Management Portal (`http://localhost:52773/csp/sys/UtilHome.csp`), create a web application under **System Administration → Security → Applications → Web Applications**:
-   - Name: `/csp/user/finish`
-   - Namespace: `USER`
-   - Dispatch class: `Finish.Api`
-   - Enable password authentication.
-
-7. Open [http://localhost:4318](http://localhost:4318). The header changes to **IRIS CONNECTED** when the app can reach the IRIS API. This confirms connectivity; a successful agent investigation must still be verified. A live coding investigation will be routed through the `Finish.Production` production to `Finish.AgentOperation`.
-
-The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
+The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=qwen/qwen3.8-27b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
 ## Workflow
 
@@ -122,8 +112,8 @@ MIT. See [LICENSE](LICENSE).
 
 The current completion profiles are `receipt-total` (a JavaScript `total(prices)` function) and `linear-equations`. New tasks use one of these profiles. General repository repair, file upload, arbitrary study subjects, and automatic project-wide completion are not implemented. The live agent path is implemented for the code profile; study uses the local guided exercise.
 
-Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes and starts the production; configure the authenticated REST web application as described above.
+Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes, configures the authenticated REST application, and starts the production.
 
-Live IRIS compilation, provider calls, and the complete Docker installation still require verification with the EAP image. Local passing tests do not establish contest readiness.
+Live verification on build `2027.1.0AI.109.0` succeeded using Groq `qwen/qwen3.8-27b`: the authenticated IRIS REST endpoint routed a synthetic receipt repair through the production, the agent called `InspectTask`, and its candidate passed all eight independent checks before completion. The recorded synthetic result is in [docs/live-verification.json](docs/live-verification.json). This is one verified scenario, not a guarantee that every model response will pass. Use **Revise using failed checks** when a candidate fails.
 
-Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. A real call on the downloaded EAP build must still be verified once the private Groq key is configured.
+Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. Run `node scripts/verify-live.mjs` to repeat the synthetic live scenario with your own key; it permits up to three checked proposals and records the actual outcome. For a host-run app, set `IRIS_BASE_URL=http://127.0.0.1:52773/csp/user/finish/` in `.env`.

@@ -58,3 +58,8 @@ test('HTTP workflow rejects stale writes and persists checked completion across 
   const reloaded=await new Store(dir).init();assert.equal(reloaded.data.tasks.find(t=>t.id===task.id).status,'completed');
  }finally{await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});}
 });
+
+test('source validation errors may use different wording without bypassing syntax restrictions',()=>{
+ const candidate=FIXED_TOTAL.replaceAll('Invalid price','Price is invalid').replaceAll('Expected an array','Input must be a list');
+ assert.equal(checkTotal(candidate).every(c=>c.passed),true);
+});

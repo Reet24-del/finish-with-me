@@ -47,7 +47,7 @@ export function evaluateTotal(source, input) {
       case 'ArrowFunctionExpression': case 'FunctionExpression': return {node, scope};
       case 'IfStatement': return evaluate(node.test, scope) ? evaluate(node.consequent, scope) : node.alternate ? evaluate(node.alternate, scope) : undefined;
       case 'ConditionalExpression': return evaluate(node.test, scope) ? evaluate(node.consequent, scope) : evaluate(node.alternate, scope);
-      case 'ThrowStatement': { const error = evaluate(node.argument, scope); throw error instanceof Error ? error : Error(String(error)); }
+      case 'ThrowStatement': { const error = evaluate(node.argument, scope); const thrown = error instanceof Error ? error : Error(String(error)); thrown.userThrown = true; throw thrown; }
       case 'ArrayExpression': return node.elements.map(n => evaluate(n, scope));
       case 'UnaryExpression': {
         const value = evaluate(node.argument, scope);
@@ -119,7 +119,7 @@ export function checkTotal(source) {
       return {name:test.name, passed:!test.throws && typeof value === 'number' && value === test.expected, actual:String(value), expected:test.throws ? 'An input validation error' : String(test.expected)};
     } catch (error) {
       // Unsupported syntax and interpreter limits must never count as validation.
-      const passed = Boolean(test.throws && /^(Invalid price|Expected an array)$/.test(error.message));
+      const passed = Boolean(test.throws && error.userThrown === true);
       return {name:test.name, passed, actual:error.message, expected:test.throws ? 'An input validation error' : String(test.expected)};
     }
   });

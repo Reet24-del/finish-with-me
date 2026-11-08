@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-08T18:28:22.836Z",
+  "build": "2027.1.0AI.109.0",
+  "provider": "Groq via IRIS AI Hub",
+  "model": "qwen/qwen3.8-27b",
+  "synthetic": true,
+  "status": "completed",
+  "runs": [
+    {
+      "attempt": 1,
+      "provider": "InterSystems IRIS AI Hub",
+      "toolsUsed": [
+        "InspectTask"
+      ],
+      "usage": {
+        "current_context_tokens": 619,
+        "model_context_size": 131072,
+        "total_cache_creation_tokens": 0,
+        "total_cache_read_tokens": 0,
+        "total_completion_tokens": 236,
+        "total_interactions": 2,
+        "total_llm_duration_ms": 1050,
+        "total_prompt_tokens": 1229,
+        "total_reasoning_tokens": 0,
+        "total_tool_calls": 1,
+        "total_tool_duration_ms": 1
+      },
+      "candidate": "export function total(prices) {\n  if (!Array.isArray(prices)) throw new TypeError(\"prices must be an array\");\n  return prices.reduce((sum, price) => {\n    if (price === null || price === undefined || typeof price === \"boolean\" || typeof price === \"object\") throw new Error(\"Invalid price\");\n    const s = String(price).trim();\n    if (s === \"\") throw new Error(\"Invalid price\");\n    const n = Number(price);\n    if (!Number.isFinite(n)) throw new Error(\"Invalid price\");\n    return sum + n;\n  }, 0);\n}",
+      "checks": [
+        {
+          "name": "Numeric strings add to 30",
+          "passed": true,
+          "actual": "30",
+          "expected": "30"
+        },
+        {
+          "name": "An empty list returns zero",
+          "passed": true,
+          "actual": "0",
+          "expected": "0"
+        },
+        {
+          "name": "Numbers and decimals work",
+          "passed": true,
+          "actual": "11.5",
+          "expected": "11.5"
+        },
+        {
+          "name": "Nonnumeric prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Blank prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Null prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Infinity is rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Non-array input is rejected",
+          "passed": true,
+          "actual": "prices must be an array",
+          "expected": "An input validation error"
+        }
+      ]
+    }
+  ]
+}

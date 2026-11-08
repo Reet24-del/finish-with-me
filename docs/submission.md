@@ -1,6 +1,6 @@
 # Submission preparation
 
-Status: local completion flows checked; live IRIS compilation and agent run still unverified. Do not describe the entry as live verified until those steps pass.
+Status: classes compiled on AI Hub Community 2027.1.0AI.109.0; authenticated REST + production + Groq Qwen run verified using synthetic data. InspectTask was called and the returned candidate passed all 8 checks before completion. See live-verification.json. Public repository publication and Open Exchange registration remain.
 
 ## Name
 Finish With Me

@@ -15,8 +15,8 @@ XData UrlMap
 ClassMethod Health() As %Status
 {
     Set %response.ContentType = "application/json; charset=utf-8"
-    Do %response.Write("{""ok"":true,""provider"":""InterSystems IRIS AI Hub""}")
-    Quit $$$OK
+    Write ("{""ok"":true,""provider"":""InterSystems IRIS AI Hub""}")
+    Return $$$OK
 }
 
 ClassMethod Investigate() As %Status
@@ -31,8 +31,8 @@ ClassMethod Investigate() As %Status
             Set error = {}
             Do error.%Set("error",$System.Status.GetErrorText(sc))
             Set %response.ContentType = "application/json; charset=utf-8"
-            Do %response.Write(error.%ToJSON())
-            Quit $$$OK
+            Write (error.%ToJSON())
+            Return $$$OK
         }
         Set sc = service.SendRequestSync("Finish.AgentOperation",request,.response,90,"Finish With Me task investigation")
         If $$$ISERR(sc) {
@@ -40,19 +40,19 @@ ClassMethod Investigate() As %Status
             Set error = {}
             Do error.%Set("error",$System.Status.GetErrorText(sc))
             Set %response.ContentType = "application/json; charset=utf-8"
-            Do %response.Write(error.%ToJSON())
-            Quit $$$OK
+            Write (error.%ToJSON())
+            Return $$$OK
         }
         Set %response.ContentType = "application/json; charset=utf-8"
-        Do %response.Write(response.Result.%ToJSON())
-        Quit $$$OK
+        Write (response.Result.%ToJSON())
+        Return $$$OK
     } Catch ex {
         Set %response.Status = 500
         Set %response.ContentType = "application/json; charset=utf-8"
         Set error = {}
         Do error.%Set("error",ex.DisplayString())
-        Do %response.Write(error.%ToJSON())
-        Quit $$$OK
+        Write (error.%ToJSON())
+        Return $$$OK
     }
 }
 }

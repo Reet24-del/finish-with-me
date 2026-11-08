@@ -2,6 +2,9 @@ Include %occStatus
 
 Class Finish.Agent.CompletionAgent Extends %AI.Agent
 {
+Property TaskContext As %DynamicObject;
+Property InspectionTools As Finish.Agent.TaskTools;
+
 Parameter MODEL = "gpt-4.1-mini";
 Parameter TOOLSETS = "";
 
@@ -22,9 +25,11 @@ Method %OnInit() As %Status
     Do settings.%Set("api_key",key)
     If providerName = "groq" Do settings.%Set("base_url","https://api.groq.com/openai/v1")
     Set ..Provider = ##class(%AI.Provider).Create("openai",settings)
-    Do ..ToolManager.AddTool(##class(Finish.Agent.TaskTools).%New())
+    Set ..InspectionTools = ##class(Finish.Agent.TaskTools).%New()
+    Set ..InspectionTools.TaskContext = ..TaskContext
+    Do ..ToolManager.AddTool(..InspectionTools)
     Set model = $System.Util.GetEnviron("AIHUB_MODEL")
-    If model = "" Set model = $SELECT(providerName="groq":"openai/gpt-oss-120b",1:"gpt-4.1-mini")
+    If model = "" Set model = $SELECT(providerName="groq":"qwen/qwen3.8-27b",1:"gpt-4.1-mini")
     Set ..Model = model
     Return $$$OK
 }
