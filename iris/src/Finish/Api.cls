@@ -23,7 +23,7 @@ ClassMethod Investigate() As %Status
 {
     Try {
         Set stage = "decode-request"
-        Set input = {}.%FromJSON(%request.Content.Read(64000))
+        Set input = {}.%FromJSON(%request.Content.Read(240000))
         Set request = ##class(Finish.Message.InvestigateRequest).%New()
         Set request.Payload = input
         Set stage = "create-service"

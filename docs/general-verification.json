@@ -1,0 +1,56 @@
+{
+  "at": "2026-11-09T06:33:40.397Z",
+  "version": "0.2.0",
+  "synthetic": true,
+  "build": "2027.1.0AI.109.0",
+  "provider": "Groq GPT-OSS via native IRIS AI Hub",
+  "project": {
+    "language": "Python",
+    "toolsUsed": [
+      "InspectTask",
+      "PrepareProject"
+    ],
+    "externalChecksPassed": 4,
+    "verificationType": "user-reported-project-verification",
+    "status": "completed"
+  },
+  "study": {
+    "subject": "Biology: osmosis",
+    "toolsUsed": [
+      "InspectTask",
+      "PrepareLesson"
+    ],
+    "sourceQuoteVerified": true,
+    "instructionOnlyAnswerRejected": true,
+    "incorrectTransferRejected": true,
+    "assessmentType": "ai-assessed-independent-transfer",
+    "status": "completed",
+    "assessmentToolsUsed": [
+      "InspectTask",
+      "AssessAnswer"
+    ]
+  },
+  "legacyRegression": {
+    "toolsUsed": [
+      "InspectTask",
+      "PrepareCandidate"
+    ],
+    "passed": 8,
+    "total": 8
+  },
+  "automatedTestsPassed": 11,
+  "frontendQA": {
+    "browser": "Chromium via Playwright (in-app browser tools unavailable)",
+    "viewports": [
+      "1440x1000",
+      "390x844"
+    ],
+    "checks": [
+      "interactive preview and feature tabs",
+      "create a general study task",
+      "import text files and persist context",
+      "completed work and context disclosure",
+      "no page errors or horizontal overflow"
+    ]
+  }
+}

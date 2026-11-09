@@ -8,7 +8,7 @@ import { createTask, localInvestigate, runChecks, approve, invalidate, answerStu
 import { checkTotal, FIXED_TOTAL } from '../server/checker.js';
 import { Store } from '../server/store.js';
 import { api } from '../server/api.js';
-const coding=()=>createTask({kind:'coding',title:'Repair totals',blocker:'String concatenation'});
+const coding=()=>createTask({kind:'coding',profile:'receipt-total',title:'Repair totals',blocker:'String concatenation'});
 test('only checked code can be approved, and edited code invalidates the evidence',()=>{
  const task=coding(); localInvestigate(task);
  assert.throws(()=>approve(task,'invented'),/evidence/);
@@ -28,7 +28,7 @@ test('changing context requires a fresh investigation and checks',()=>{
  assert.throws(()=>approve(task,token),/evidence/);
 });
 test('study completion requires a correct independent transfer answer',()=>{
- const task=createTask({kind:'study',title:'Equations'});localInvestigate(task);
+ const task=createTask({kind:'study',profile:'linear-equations',title:'Equations'});localInvestigate(task);
  assert.equal(publicTask(task).study.expected,undefined);
  answerStudy(task,'99');assert.equal(task.study.step,0);
  answerStudy(task,'3');answerStudy(task,'4');answerStudy(task,'4');
@@ -36,7 +36,7 @@ test('study completion requires a correct independent transfer answer',()=>{
  answerStudy(task,'5');approve(task,task.approvalToken);assert.equal(task.status,'completed');
 });
 test('malformed task fields are rejected before persistence',()=>{
- assert.throws(()=>createTask({kind:'coding',title:'Task',blocker:{text:'bad'}}),/text/);
+ assert.throws(()=>createTask({kind:'coding',profile:'receipt-total',title:'Task',blocker:{text:'bad'}}),/text/);
 });
 test('HTTP workflow rejects stale writes and persists checked completion across reload',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'finish-test-'));
@@ -46,7 +46,7 @@ test('HTTP workflow rejects stale writes and persists checked completion across 
  const base=`http://127.0.0.1:${server.address().port}`;
  const post=async(path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return {status:r.status,data:await r.json()};};
  try{
-  let task=(await post('/api/tasks',{kind:'coding',title:'API task',blocker:'Strings'})).data.task;
+  let task=(await post('/api/tasks',{kind:'coding',profile:'receipt-total',title:'API task',blocker:'Strings'})).data.task;
   const endpoint=`/api/tasks/${task.id}`;
   const premature=await post(endpoint+'/check',{revision:task.revision,code:FIXED_TOTAL});
   assert.equal(premature.status,400);assert.match(premature.data.error,/Investigate/);

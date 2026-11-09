@@ -14,15 +14,13 @@ When someone gets stuck, a reminder to “focus” does not remove the blocker. 
 
 ## What works
 
-- Start a coding or study task and describe the exact point where you got stuck.
-- Ask the live AI Hub agent for one bounded coding repair, or use the local guided flow.
-- Edit the proposed code yourself. The checker interprets a small JavaScript subset and never evaluates submitted code with `eval` or imports it.
-- Run eight independent cases. A changed candidate clears old evidence; passing checks still need your approval before the code is saved.
-- Work a sample linear-equation exercise, then solve a new equation independently to finish.
-- Save a concise next action as a return point and see it when you come back.
-- Persist workspace data locally; no account or cloud service is required.
+- **Your projects:** add source files (any text-based language), logs, your stack and success criteria. The native IRIS AI Hub agent inspects that context and proposes one complete file replacement plus verification instructions. Review/export it, apply it in your own environment, record actual check results, then explicitly approve the piece of work.
+- **Your studies:** add notes or an excerpt and your subject/level. AI Hub creates a source-cited explanation, a guided question, a distinct transfer question and private grading rubrics. Answer in your own words, get rubric-based AI feedback, retry, then approve after an accepted independent answer. The explanation is hidden during transfer.
+- **Return and review:** save a concrete return point, export the proposed artifact or study transcript, and revisit completed tasks from the workspace.
+- **Interactive frontend:** switch between project/study previews, select workflow steps and explore features. Motion respects reduced-motion preferences. Preview content is labeled as an example.
+- **Deterministic examples:** the original receipt-total checker and linear-equation practice remain available as seeded examples without AI.
 
-The included workspace starts with sample tasks: a string-concatenation bug in a receipt total and a linear-equation study exercise. You can replace these with your own work.
+Project verification is **user-reported**, not server-executed. Study assessment is **AI feedback**, not a guaranteed or independently verified grade. The UI and saved evidence identify these distinctions. Editing context invalidates previous evidence and approval.
 
 ## Run the local mode
 
@@ -33,7 +31,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:4318](http://localhost:4318). Local mode includes the rule-based coding repair and guided study flow. To use live AI Hub, follow the Docker setup below.
+Open [http://localhost:4318](http://localhost:4318). Without IRIS, local mode supports the built-in examples and task/context storage. Working on your own material requires the live IRIS connection. To use live AI Hub, follow the Docker setup below.
 
 ## Run with InterSystems IRIS AI Hub
 
@@ -68,21 +66,25 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
    docker compose up --build -d app
    ```
 
-6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. A coding investigation routes through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
+6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. Project investigations, study preparation and answer assessments route through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
 
 The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
 ## Workflow
 
 ```text
-Browser → local app API → IRIS REST dispatcher
-                         → Interoperability production
-                         → AI Hub agent + InspectTask tool
-                         ← bounded repair proposal
-Browser → sandboxed contract checks → human approval → saved result
+Your files / notes → app API → authenticated IRIS REST
+                              → Interoperability production
+                              → native AI Hub agent → InspectTask
+                                 ├ PrepareProject → replacement + user-run checks
+                                 ├ PrepareLesson → explanation + private rubrics
+                                 └ AssessAnswer → AI feedback + accepted/retry
+Evidence → explicit user approval → saved completion record
 ```
 
-The agent cannot mark a task complete. For code, the local checker compares the candidate against eight fixed cases in a restricted AST interpreter. For study, a deterministic checker validates the learner's answer to a new equation. Editing the source or candidate clears previous evidence.
+The agent has no completion or code-execution tool. General project proposals never modify repository files automatically. The user runs relevant checks and supplies verification results. General study assessment is a separate AI Hub request that receives the stored question, private rubric, source and learner answer. Only the active question is sent to the browser; private rubrics are stripped from every task response. Generated questions may still be imperfect—review them against the source and use **Rework with this context** when needed.
+
+For the original examples, the restricted JavaScript AST interpreter checks eight receipt-total cases, and deterministic arithmetic validates the equation exercise.
 
 ## Project layout
 
@@ -93,20 +95,22 @@ The agent cannot mark a task complete. For code, the local checker compares the 
 
 ## Configuration and privacy
 
-Task data is stored in `.data/workspace.json` in local mode or the `app-data` Docker volume in Compose mode. The IRIS provider key remains in the IRIS container environment. The example contains no clinical or personal data; use synthetic tasks in demos.
+Task data is stored in `.data/workspace.json` in local mode or the `app-data` Docker volume in Compose mode. The IRIS provider key remains in the IRIS container environment. Uploaded text and notes are stored with your task and sent through IRIS to the selected LLM provider when you request work or feedback. Only include material you are allowed to share with that provider. Credentials stay server-side; text-file selection rejects common private-key and .env filenames.
 
 ## Contest and overlap note
 
-Finish With Me focuses on **doing and independently checking the next piece of work in-session**, including a safe coding repair and a demonstrated study transfer. Existing planners and context-resume tools already cover reminders, task breakdown, focus sessions, and recovering project context; this project does not claim those parts are novel by themselves. The differentiator is an auditable completion gate that runs after useful work is done. This is a focused entry, not a claim that no other product has any similar feature.
+Finish With Me focuses on **turning a blocker into a concrete artifact or practice step with explicit evidence and review**. Only its fixed examples use deterministic independent checking; general workflows label user-reported verification and AI assessment. Existing planners and context-resume tools already cover reminders, task breakdown, focus sessions, and recovering project context; this project does not claim those parts are novel by themselves. The differentiator is an auditable completion gate that runs after useful work is done. This is a focused entry, not a claim that no other product has any similar feature.
 
 ## Demo walkthrough
 
-1. Open the seeded **Fix receipt total** project task and see the failing `reduce` implementation.
-2. State the blocker and what you tried; ask the live AI Hub agent for a repair.
-3. Review and, if useful, change the proposed function. Run the independent contract checks and see any failure.
-4. Approve only after all checks pass. The app saves the checked candidate and records when it was closed.
-5. Open **Understand linear equations**, work through the scaffolded step, and solve the separate transfer equation. The task closes only after the answer is checked.
-6. Save a return point on any active task and return to it from the workspace.
+1. Choose **Bring your own project**, name the blocker and paste a relevant source file or use **Add text files**. Add the stack and measurable success criteria.
+2. Ask AI Hub to work on it. Review/export the proposed replacement and the verification plan.
+3. Apply the change in your own project. Run the relevant checks, record actual results, confirm them and approve this bounded piece of work.
+4. Create a study task, add your subject and notes, and build a study session. Inspect the source quote, explanation and guided question.
+5. Answer the guided question, then the distinct independent question. An insufficient answer keeps the task open; feedback helps you retry. Review the final feedback before approving.
+6. Save a return point and use **Completed** to revisit/export prior work.
+
+The linked YouTube video demonstrates the earlier receipt-total and algebra examples. The current version also supports user-supplied project and study context as described above.
 
 ## License
 
@@ -114,7 +118,9 @@ MIT. See [LICENSE](LICENSE).
 
 ## Implementation scope and verification
 
-The current completion profiles are `receipt-total` (a JavaScript `total(prices)` function) and `linear-equations`. New tasks use one of these profiles. General repository repair, file upload, arbitrary study subjects, and automatic project-wide completion are not implemented. The live agent path is implemented for the code profile; study uses the local guided exercise.
+New tasks use `project` and `subject` profiles. Source/notes are provided as pasted text or text-file selections (combined context up to 32,000 characters). Binary PDFs, repository cloning, autonomous file changes, execution of arbitrary project code and whole-project completion are not implemented. The `receipt-total` and `linear-equations` profiles remain as fixed examples. General project work, lesson generation and answer assessment all use native IRIS AI Hub tools.
+
+The broader workflows were verified with a Python pagination task (four checks executed outside the application) and a biology session that rejected an instruction-only response and an incorrect transfer answer. Both completed through the API with explicit approval; see [docs/general-verification.json](docs/general-verification.json). These are synthetic scenario checks, not a guarantee of model accuracy across all subjects or projects.
 
 Run `npm test` for completion gating, stale-write rejection, independent study transfer, restricted execution, and durable HTTP workflow checks. Run `npm run build` for the frontend production bundle. After starting the IRIS container, `sh scripts/setup-iris.sh` imports classes, configures the authenticated REST application, and starts the production.
 

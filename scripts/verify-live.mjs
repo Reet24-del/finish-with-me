@@ -3,7 +3,7 @@ import { createTask, invalidate, runChecks, approve } from '../server/domain.js'
 import { investigateWithIris } from '../server/iris.js';
 process.loadEnvFile('.env');
 process.env.IRIS_BASE_URL ||= 'http://127.0.0.1:52773/csp/user/finish/';
-const task=createTask({kind:'coding',title:'Synthetic live verification: receipt total',blocker:'Numeric strings concatenate instead of adding.',tried:'Checked the incoming values.'});
+const task=createTask({kind:'coding',profile:'receipt-total',title:'Synthetic live verification: receipt total',blocker:'Numeric strings concatenate instead of adding.',tried:'Checked the incoming values.'});
 const runs=[];
 for(let attempt=1;attempt<=3;attempt++){
  invalidate(task);

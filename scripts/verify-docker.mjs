@@ -6,7 +6,7 @@ async function request(path,body){
 }
 const health=await request('/api/health');if(!health.irisVerified)throw Error('Container cannot reach authenticated IRIS');
 const tasks=(await request('/api/tasks')).tasks;
-let task=tasks.find(t=>t.title==='Docker installation verification (synthetic)'&&t.status==='active')||(await request('/api/tasks',{kind:'coding',title:'Docker installation verification (synthetic)',blocker:'Numeric strings concatenate instead of adding.'})).task;
+let task=tasks.find(t=>t.title==='Docker installation verification (synthetic)'&&t.status==='active')||(await request('/api/tasks',{kind:'coding',profile:'receipt-total',title:'Docker installation verification (synthetic)',blocker:'Numeric strings concatenate instead of adding.'})).task;
 const trace=[];
 for(let i=0;i<3;i++){
  task=(await request(`/api/tasks/${task.id}/investigate`,{revision:task.revision,engine:'iris'})).task;

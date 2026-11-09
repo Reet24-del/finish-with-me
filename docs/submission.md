@@ -34,3 +34,7 @@ Actual AI Hub build, provider/model, run date, production trace/session, tool ca
 https://www.youtube.com/watch?v=aBBQBlfhaA8
 
 Added to the GitHub README. Updating the dedicated Open Exchange YouTube field remains pending.
+
+## Version 0.2.0 improvements
+
+Added user-supplied project files/context and source-grounded study sessions through native IRIS AI Hub tools. General projects use explicit user-reported verification; failing results keep work open and inform revisions. Study uses private rubrics, source quotations and separately labeled AI assessment. Interactive landing previews and feature tabs make the workflows explorable. Original deterministic examples remain available. Live Python and biology checks are recorded in general-verification.json. The existing demo video shows the earlier fixed examples; Open Exchange release metadata/video have not been updated to a new release through the portal.

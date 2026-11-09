@@ -1,3 +1,4 @@
+import { isGeneral, approveGeneral } from './general.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { checkTotal, FIXED_TOTAL } from './checker.js';
 export const INITIAL_SOURCE = `export function total(prices) {\n  return prices.reduce((sum, price) => sum + price, 0);\n}`;
@@ -6,19 +7,23 @@ export const contract = ['Numeric totals', 'Empty input returns zero', 'Invalid 
 export function event(task, message, type='info') { task.events.push({id:randomUUID(),at:new Date().toISOString(),message,type}); }
 export function createTask(input) {
   if (!['coding','study'].includes(input.kind) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 120) throw Error('Choose a task type and a title up to 120 characters.');
-  for (const key of ['description','blocker','tried','source']) if (input[key] !== undefined && (typeof input[key] !== 'string' || input[key].length > 12000)) throw Error('Task fields must be text up to 12,000 characters.');
+  for (const key of ['description','blocker','tried','source','material','criteria','subject']) if (input[key] !== undefined && (typeof input[key] !== 'string' || input[key].length > 32000)) throw Error('Task fields must be text up to 32,000 characters.');
   const study = input.kind === 'study';
-  const task = {id:randomUUID(),title:input.title.trim(),kind:input.kind,profile:study?'linear-equations':'receipt-total',description:input.description || '',blocker:input.blocker || '',tried:input.tried || '',source:study ? '' : input.source || INITIAL_SOURCE,stage:'understand',status:'active',events:[],attempts:[],createdAt:new Date().toISOString(),revision:0};
+  const profile=input.profile||(study?'subject':'project');
+  if(!(study?['subject','linear-equations']:['project','receipt-total']).includes(profile))throw Error('Choose a supported task profile.');
+  const task = {id:randomUUID(),title:input.title.trim(),kind:input.kind,profile,material:input.material||'',criteria:input.criteria||'',subject:input.subject||'',description:input.description || '',blocker:input.blocker || '',tried:input.tried || '',source:input.source||(profile==='receipt-total'?INITIAL_SOURCE:''),stage:'understand',status:'active',events:[],attempts:[],createdAt:new Date().toISOString(),revision:0};
   event(task, 'Task ready to investigate.'); return task;
 }
 export function seedTasks() {
-  return [createTask({kind:'coding', title:'Fix receipt total',description:'The total becomes 01020 instead of 30.',blocker:'Adding prices joins the values instead of summing them.',tried:'I checked the input values.'}),createTask({kind:'study',title:'Understand linear equations',description:'Find the first step, then solve a fresh question yourself.',blocker:'I can follow an example, but I get stuck when solving on my own.',tried:'I reread my notes.'})];
+  return [createTask({kind:'coding', profile:'receipt-total', title:'Example: Fix receipt total',description:'The total becomes 01020 instead of 30.',blocker:'Adding prices joins the values instead of summing them.',tried:'I checked the input values.'}),createTask({kind:'study',profile:'linear-equations',title:'Example: Understand linear equations',description:'Find the first step, then solve a fresh question yourself.',blocker:'I can follow an example, but I get stuck when solving on my own.',tried:'I reread my notes.'})];
 }
 export function invalidate(task) {
+  if(isGeneral(task)&&task.kind==='coding'&&task.proposal?.artifact){task.attempts.push({at:new Date().toISOString(),artifact:task.proposal.artifact,verification:task.verificationNotes||'',outcome:task.verificationStatus||'not-verified'});task.attempts=task.attempts.slice(-8);}
   delete task.proposal; delete task.checks; delete task.baseline; delete task.study; delete task.evidence; delete task.approvalToken;
   task.stage='understand';task.status='active';task.revision++;
 }
 export function localInvestigate(task) {
+  if(isGeneral(task))throw Error('Connect IRIS AI Hub to work on your own projects and study material. The built-in examples remain available without AI.');
   if (task.kind === 'study') {
     task.study={step:0,failures:0,attempts:[],instruction:'Start with 2x + 3 = 11. What do you subtract from both sides to isolate 2x?',prompt:'Number to subtract',expected:3};
     task.proposal={summary:'Let’s work through one equation together, then check a new one independently.',nextAction:'Subtract the constant from both sides. You choose the number.',strategy:'Guided practice → independent transfer',provider:'Local guided exercise'};
@@ -31,6 +36,7 @@ export function localInvestigate(task) {
   task.stage='prepare';task.revision++;event(task,task.kind==='study'?'Prepared a guided equation exercise.':'Checked the original function and prepared a candidate.');
 }
 export function runChecks(task) {
+  if(isGeneral(task))throw Error('Run the proposed checks in your project, then record their results.');
   if (task.kind !== 'coding' || !task.proposal?.code) throw Error('Investigate the coding task before checking it.');
   if (task.proposal.sourceHash !== hash(task.source)) throw Error('Source changed. Investigate again.');
   task.checks=checkTotal(task.proposal.code);
@@ -43,6 +49,7 @@ export function runChecks(task) {
   task.revision++;
 }
 export function approve(task, token) {
+  if(isGeneral(task))return approveGeneral(task,token);
   if(task.status==='completed') throw Error('This task is already complete.');
   if(task.stage!=='review' || !token || token!==task.approvalToken || !task.evidence) throw Error('Current passing evidence and review approval are required.');
   if(task.kind==='coding') {
@@ -75,6 +82,6 @@ export function answerStudy(task, input) {
 }
 export function publicTask(task) {
   const copy=structuredClone(task);
-  if(copy.study) delete copy.study.expected;
+  if(copy.study) {delete copy.study.expected;delete copy.study.guidedRubric;delete copy.study.transferRubric;if(copy.study.phase==='guided')delete copy.study.transferQuestion;}
   return copy;
 }
