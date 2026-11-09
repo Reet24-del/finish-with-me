@@ -12,6 +12,10 @@ This is an entry for the [InterSystems Programming Contest: AI Agents in Interop
 
 When someone gets stuck, a reminder to “focus” does not remove the blocker. Finish With Me turns a vague stalled project or study session into one inspectable move, preserves a short return point when the user has to stop, and records completion only after checks pass or a fresh exercise is solved. It does not use streaks, shame, or self-reported time as a proxy for finishing.
 
+## Pages
+
+`/` is the landing page, `/features` explains the workflows, `/workspace` lists your tasks, `/workspace/<task-id>` opens a task directly, `/new` creates work, and `/guide` explains what to bring. Browser Back/Forward and refresh work on individual pages.
+
 ## What works
 
 - **Your projects:** add source files (any text-based language), logs, your stack and success criteria. The native IRIS AI Hub agent inspects that context and proposes one complete file replacement plus verification instructions. Review/export it, apply it in your own environment, record actual check results, then explicitly approve the piece of work.

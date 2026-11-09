@@ -3,7 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, CircleHelp, Code2, Compass, Flame, Leaf, LoaderCircle, Pause, Plus, RotateCcw, Sparkles, Terminal, X } from 'lucide-react';
 import './style.css';
 import GeneralWorkspace from './GeneralWorkspace.jsx';
-import {FeaturePreview,FeatureShowcase} from './FeaturePreview.jsx';
+import {useRoute} from './navigation.js';
+import LandingPage from './pages/LandingPage.jsx';
+import FeaturesPage from './pages/FeaturesPage.jsx';
+import WorkspacePage from './pages/WorkspacePage.jsx';
+import NewTaskPage from './pages/NewTaskPage.jsx';
+import GuidePage from './pages/GuidePage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
 
 const call = async (url, body) => {
   const response = await fetch(url, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type':'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -11,26 +17,32 @@ const call = async (url, body) => {
 };
 const steps = ['understand','prepare','check','review'];
 function App(){
+  const {route,navigate,link}=useRoute();
+  const [loaded,setLoaded]=useState(false);
+  const selected=route.pathname.match(/^\/workspace\/([a-f0-9-]+)$/)?.[1]||null;
+  const setSelected=id=>navigate(id?`/workspace/${id}`:'/workspace');
+  const setModal=open=>navigate(open?'/new':'/workspace');
   const [showCompleted,setShowCompleted]=useState(false),[busyAction,setBusyAction]=useState(null);
-  const [tasks,setTasks]=useState([]),[selected,setSelected]=useState(null),[health,setHealth]=useState({mode:'checking'}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[modal,setModal]=useState(false),[form,setForm]=useState({kind:'coding',title:'',description:''}),[answer,setAnswer]=useState(''),[breadcrumb,setBreadcrumb]=useState('');
-  const startTask=kind=>{setForm({kind,title:'',description:''});setModal(true);};
+  const [tasks,setTasks]=useState([]),[health,setHealth]=useState({mode:'checking'}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[form,setForm]=useState({kind:'coding',title:'',description:''}),[answer,setAnswer]=useState(''),[breadcrumb,setBreadcrumb]=useState('');
+  const startTask=kind=>{setForm({kind,title:'',description:''});navigate('/new?kind='+kind);};
   const active=tasks.find(t=>t.id===selected)||null;
-  async function refresh(keep=true){const [r,h]=await Promise.all([call('/api/tasks'),call('/api/health')]);setTasks(r.tasks);setHealth(h);if(keep&&selected&&!r.tasks.some(t=>t.id===selected))setSelected(null);}
-  useEffect(()=>{refresh(false).catch(e=>setError(e.message));},[]);
+  async function refresh(keep=true){const [r,h]=await Promise.all([call('/api/tasks'),call('/api/health')]);setTasks(r.tasks);setHealth(h);setLoaded(true);}
+  useEffect(()=>{refresh(false).catch(e=>{setError(e.message);setLoaded(true);});},[]);
+  useEffect(()=>{if(route.pathname==='/new'){const kind=new URLSearchParams(route.search).get('kind');if(['coding','study'].includes(kind))setForm(f=>({...f,kind}));}setError('');setNotice('');setAnswer('');setBreadcrumb('');const names={'/':'Finish With Me — one task, a real result','/features':'The approach — Finish With Me','/workspace':'Your workspace — Finish With Me','/new':'Start a task — Finish With Me','/guide':'Getting started — Finish With Me'};document.title=names[route.pathname]||(selected?'Your task — Finish With Me':'Page not found — Finish With Me');},[route.pathname,route.search]);
   const done=tasks.filter(t=>t.status==='completed').length;
   const save=async(path,payload={})=>{if(!active)return;setBusyAction(path);setBusy(true);setError('');setNotice('');try{const r=await call(`/api/tasks/${active.id}/${path}`,{...payload,revision:active.revision});setTasks(old=>old.map(t=>t.id===r.task.id?r.task:t));if(path==='approve')setNotice('That piece is finished. The proof is saved here.');if(path==='update')setNotice('Context saved. You can return to it later.');}catch(e){setError(e.message);await refresh();}finally{setBusy(false);setBusyAction(null);}};
-  const create=async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await call('/api/tasks',form);setTasks(old=>[r.task,...old]);setSelected(r.task.id);setModal(false);setForm({kind:'coding',title:'',description:''});}catch(e){setError(e.message);}finally{setBusy(false);}};
+  const create=async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await call('/api/tasks',form);setTasks(old=>[r.task,...old]);setSelected(r.task.id);setForm({kind:'coding',title:'',description:''});}catch(e){setError(e.message);}finally{setBusy(false);}};
   const update=async patch=>{if(!active)return;setBusy(true);try{const r=await call(`/api/tasks/${active.id}/update`,{...patch,revision:active.revision});setTasks(old=>old.map(t=>t.id===r.task.id?r.task:t));}catch(e){setError(e.message);await refresh();}finally{setBusy(false);}};
   const editContext=(key,value)=>setTasks(ts=>ts.map(t=>{if(t.id!==active.id)return t;const next={...t,[key]:value,stage:'understand'};for(const field of ['proposal','checks','baseline','study','evidence','approvalToken'])delete next[field];return next;}));
   const cards=useMemo(()=>tasks.filter(t=>showCompleted?t.status==='completed':t.status!=='completed'),[tasks,showCompleted]);
   const badge=(kind)=><span className={`kind ${kind}`}>{kind==='coding'?<Code2 size={13}/>:<BookOpen size={13}/>} {kind==='coding'?'PROJECT':'STUDY'}</span>;
   return <div className="app">
     <header className="topbar">
-      <button className="brand" aria-label="Finish With Me home" onClick={()=>setSelected(null)}><span className="brand-mark" aria-hidden="true">f<span>↗</span></span><span className="wordmark">finish<span>with me.</span></span></button>
-      <nav className="topnav" aria-label="Page sections"><a href="#features" onClick={()=>setSelected(null)}><sup>01</sup> The idea <ArrowRight size={16}/></a><a href="#workspace" onClick={()=>setSelected(null)}><sup>02</sup> Your workspace <ArrowRight size={16}/></a></nav>
+      <button className="brand" aria-label="Finish With Me home" onClick={()=>navigate('/')}><span className="brand-mark" aria-hidden="true">f<span>↗</span></span><span className="wordmark">finish<span>with me.</span></span></button>
+      <nav className="topnav" aria-label="Main navigation"><a aria-current={route.pathname==='/features'?'page':undefined} href="/features" onClick={link('/features')}><sup>01</sup> The idea <ArrowRight size={16}/></a><a aria-current={route.pathname.startsWith('/workspace')?'page':undefined} href="/workspace" onClick={link('/workspace')}><sup>02</sup> Your workspace <ArrowRight size={16}/></a><a aria-current={route.pathname==='/guide'?'page':undefined} href="/guide" onClick={link('/guide')}><sup>03</sup> Start here</a></nav>
       <div className="top-right"><span className={`system ${health.irisVerified?'live':''}`}><i/>{health.irisVerified?'IRIS connected':'Local mode'}</span><button className="header-start" onClick={()=>setModal(true)}>Start something <Plus size={19}/></button></div>
     </header>
-    <main className={active?'shell':'shell landing-shell'}>
+    <main className={['/','/features'].includes(route.pathname)?'shell landing-shell':'shell'}>
       {health.hostedDemo&&<div className="notice">Hosted demo · your workspace is separate from other visitors. Tasks reset when this free service restarts. {health.irisVerified?'Live IRIS AI Hub is connected.':'Coding and study use the local guided demo; watch the video for the live IRIS run.'}</div>}
       {active? <>
         <button className="back" onClick={()=>{setSelected(null);setError('');setNotice('')}}><ArrowLeft size={15}/> All tasks</button>
@@ -60,17 +72,10 @@ function App(){
           </>}
         </section>
         <aside className="principle"><span>WHY THIS WORKS</span><p>Nothing is called “done” just because you spent time on it. A project needs passing checks; a study task needs a new problem you can solve on your own.</p></aside></>}
-      </>:<>
-        <section className="hero"><div className="hero-copy"><span className="hero-kicker"><span/> ONE TASK. A REAL RESULT.</span><h1>STUCK IS A<br/>MOMENT.<br/><em>NOT THE END.</em></h1><p>Your source files. Your study notes. One blocker we can work through—until you have a result you can review.</p><button className="button primary big" onClick={()=>setModal(true)}><Plus size={17}/> Bring me the stuck thing <ArrowRight size={16}/></button><div className="trust"><span><Check size={13}/> no guilt streaks</span><span><Check size={13}/> your files & your notes</span><span><Check size={13}/> evidence before “done”</span></div></div><FeaturePreview onStart={startTask}/></section>
-        <FeatureShowcase onStart={startTask}/>
-        <section className="workspace-head" id="workspace"><div><span className="eyebrow">YOUR WORKSPACE</span><h2>Pick up where you left off.</h2><div className="workspace-filters"><button className={!showCompleted?'selected':''} onClick={()=>setShowCompleted(false)}>In progress</button><button className={showCompleted?'selected':''} onClick={()=>setShowCompleted(true)}>Completed ({done})</button></div></div><div className="progress-total"><span>{done} finished</span><div className="mini-progress"><i style={{width:`${tasks.length?done/tasks.length*100:0}%`}}/></div></div></section>
-        {error&&<div className="alert"><CircleHelp size={16}/>{error}<button onClick={()=>setError('')}><X size={14}/></button></div>}
-        {!cards.length?<div className="empty"><Compass size={25}/><h3>Room to start with one thing.</h3><p>No task waiting here yet. Choose something small you’ve been stuck on.</p><button className="button secondary" onClick={()=>setModal(true)}><Plus size={15}/> Add a task</button></div>:<div className="task-grid">{cards.map((t,index)=><button className="task-card" key={t.id} onClick={()=>{setSelected(t.id);setError('');setNotice('')}}><span className="task-index">{String(index+1).padStart(2,'0')}</span><div className="task-row-main"><div className="task-card-top">{badge(t.kind)}<span className="task-time">{t.status==='completed'?'COMPLETED':t.paused?'RETURN POINT SAVED':t.stage==='review'?'READY TO FINISH':'IN PROGRESS'}</span></div><h3>{t.title}</h3><p>{t.description||t.blocker||'Pick up one small step toward a real result.'}</p>{t.breadcrumb&&<div className="breadcrumb"><RotateCcw size={13}/>{t.breadcrumb}</div>}</div><span className="task-row-arrow" aria-hidden="true">↗</span></button>)}</div>}
-        <div className="add-row"><button onClick={()=>setModal(true)}><span><Plus size={18}/></span><div><b>Bring another stuck task</b><small>Project or study — one piece at a time</small></div><ArrowRight size={16}/></button></div>
-        <footer className="home-foot"><span className="footer-wordmark">finish with me.</span><span>{health.irisVerified?'Powered by IRIS AI Hub':'AI Hub connection needed for live project work'}</span></footer>
-      </>}
+      </>:route.pathname==='/'?<LandingPage startTask={startTask} link={link}/>:route.pathname==='/features'?<FeaturesPage startTask={startTask}/>:route.pathname==='/workspace'?<WorkspacePage tasks={tasks} showCompleted={showCompleted} setShowCompleted={setShowCompleted} onSelect={setSelected} startTask={startTask} error={error}/>:route.pathname==='/new'?<NewTaskPage form={form} setForm={setForm} create={create} busy={busy} error={error}/>:route.pathname==='/guide'?<GuidePage startTask={startTask} health={health}/>:selected&&!loaded?<section className="page-intro" role="status"><LoaderCircle className="spin"/><p>Picking up your thread…</p></section>:<NotFoundPage task={route.pathname.startsWith('/workspace/')} link={link}/>}
+
     </main>
-    {modal&&<div className="overlay" onClick={()=>setModal(false)}><form className="modal" onSubmit={create} onClick={e=>e.stopPropagation()}><button type="button" className="modal-close" onClick={()=>setModal(false)}><X size={17}/></button><span className="eyebrow">LET’S GET IT MOVING</span><h2>What are you stuck on?</h2><p>Give it a name. It doesn’t have to be the whole project.</p><div className="kind-picker"><button type="button" className={form.kind==='coding'?'picked':''} onClick={()=>setForm({...form,kind:'coding'})}><Code2 size={18}/> Project work</button><button type="button" className={form.kind==='study'?'picked':''} onClick={()=>setForm({...form,kind:'study'})}><BookOpen size={18}/> Study</button></div><p className="scope-note">{form.kind==='coding'?'Bring relevant source files, logs and a concrete goal. AI prepares a change; you verify it in your project.':'Bring notes or reading material from your subject. Get a grounded explanation and fresh practice questions.'}</p><label className="field-label">Name this piece</label><input autoFocus required maxLength="120" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==='coding'?'e.g. Fix pagination in my API':'e.g. Understand cellular respiration'}/><label className="field-label spaced">What does “finished” look like?</label><textarea rows="2" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="A small, visible result you can point to…"/><div className="modal-actions"><button type="button" className="button text" onClick={()=>setModal(false)}>Maybe later</button><button className="button primary" disabled={busy||!form.title.trim()}>{busy?<LoaderCircle className="spin" size={15}/>:<ArrowRight size={15}/>} Start with this</button></div></form></div>}
+    <footer className="home-foot"><a className="footer-wordmark" href="/" onClick={link('/')}>finish with me.</a><nav aria-label="Footer navigation"><a href="/features" onClick={link('/features')}>The idea</a><a href="/workspace" onClick={link('/workspace')}>Your workspace</a><a href="/guide" onClick={link('/guide')}>Getting started</a></nav><span>{health.irisVerified?'Powered by IRIS AI Hub':'AI Hub connection needed for live work'}</span></footer>
   </div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);

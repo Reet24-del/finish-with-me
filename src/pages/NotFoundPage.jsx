@@ -1,0 +1,2 @@
+import React from 'react';
+export default function NotFoundPage({task,link}){return <section className="page-intro not-found"><span className="eyebrow">{task?'TASK NOT AVAILABLE':'404'}</span><h1>{task?'This thread isn’t here.':'A wrong turn.'}</h1><p>{task?'The task may belong to another browser workspace, or this demo may have restarted. Your available tasks are in the workspace.':'That page does not exist. Your work is still waiting in the workspace.'}</p><a className="button primary" href="/workspace" onClick={link('/workspace')}>Open your workspace →</a></section>;}

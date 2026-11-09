@@ -11,3 +11,9 @@ Live IRIS AI Hub requires a separately hosted, licensed IRIS AI Hub service reac
 For durable production use, add real authentication, a durable database and operational limits before expanding this public demo. A paid persistent disk alone is not user authentication.
 
 Demo video: https://www.youtube.com/watch?v=aBBQBlfhaA8
+
+## Pages and deep links
+
+The app now has distinct pages at `/`, `/features`, `/workspace`, `/workspace/<task-id>`, `/new`, and `/guide`. Browser history and direct task URLs are supported. The Node server serves the application shell for these paths, so refreshing a nested page works on Render without static rewrite rules. Task URLs remain scoped to the visitor’s cookie-based workspace.
+
+The build command explicitly includes development dependencies because Vite is needed during the build even when NODE_ENV is production: `npm ci --include=dev && npm run build`. Runtime still uses `npm start` with the compiled frontend.
