@@ -1,5 +1,10 @@
 # Render hosting
 
+Live URL: https://finish-with-me.onrender.com/
+
+Verified on 9 November 2026: homepage, features page, workspace API, task creation, direct task URL refresh, guide page and mobile layout. Public health reports hostedDemo=true and irisVerified=false. Native AI Hub remains available on the local Docker setup; no local IRIS credentials or database ports were exposed.
+
+
 Use [Deploy to Render](https://render.com/deploy?repo=https://github.com/Reet24-del/finish-with-me), sign in, select a workspace and deploy the free web service. The blueprint builds the React frontend and runs its Node backend.
 
 The app uses Render’s automatically supplied RENDER_EXTERNAL_URL for HTTPS request validation. No manual URL configuration is needed. For a custom domain, set PUBLIC_ORIGIN to its exact HTTPS origin without a trailing slash.

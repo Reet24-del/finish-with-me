@@ -6,6 +6,8 @@ This is an entry for the [InterSystems Programming Contest: AI Agents in Interop
 
 [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
 
+[Open the hosted website](https://finish-with-me.onrender.com/) — multipage demo with isolated visitor workspaces. The hosted instance uses demo mode until a remote IRIS endpoint is configured.
+
 [Deploy a free demo on Render](https://render.com/deploy?repo=https://github.com/Reet24-del/finish-with-me) · [Hosting details](docs/hosting.md)
 
 ## Why it exists
