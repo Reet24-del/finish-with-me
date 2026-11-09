@@ -28,3 +28,9 @@ Show the saved blocker → agent investigation → proposed candidate → indepe
 
 ## Evidence to record after the live run
 Actual AI Hub build, provider/model, run date, production trace/session, tool calls, outcome, and any limitations observed. Never publish keys or private task content.
+
+## Uploaded demo video
+
+https://www.youtube.com/watch?v=aBBQBlfhaA8
+
+Added to the GitHub README. Updating the dedicated Open Exchange YouTube field remains pending.

@@ -18,11 +18,11 @@ export function api(store) {
           const response=await fetch(new URL('health',process.env.IRIS_BASE_URL.endsWith('/')?process.env.IRIS_BASE_URL:process.env.IRIS_BASE_URL+'/'),{headers,signal:AbortSignal.timeout(1800)});
           irisVerified=response.ok&&(await response.json()).provider==='InterSystems IRIS AI Hub';
         }catch{}
-        return json(res,200,{ok:true,mode:process.env.IRIS_BASE_URL?'iris-configured':'local',irisVerified,capabilities:['receipt-total','linear-equations'],message:irisVerified?'IRIS AI Hub is responding.':'Local guided completion is ready; configure AI Hub for live project investigations.'});
+        return json(res,200,{ok:true,mode:process.env.IRIS_BASE_URL?'iris-configured':'local',irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',capabilities:['receipt-total','linear-equations'],message:irisVerified?'IRIS AI Hub is responding.':'Local guided completion is ready; configure AI Hub for live project investigations.'});
       }
       if(req.method==='GET'&&path==='/api/tasks'){await store.queue;return json(res,200,{tasks:store.data.tasks.map(publicTask)});}
       if(req.method!=='POST')return json(res,404,{error:'Route not found.'});
-      if(req.headers.origin && req.headers.origin!==`http://${req.headers.host}`)return json(res,403,{error:'Cross-origin changes are not allowed.'});
+      if(req.headers.origin && req.headers.origin!==(process.env.PUBLIC_ORIGIN||process.env.RENDER_EXTERNAL_URL||`http://${req.headers.host}`))return json(res,403,{error:'Cross-origin changes are not allowed.'});
       const input=await body(req);
       const result=await store.mutate(async data=>{
         if(path==='/api/tasks'){
