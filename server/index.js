@@ -30,7 +30,7 @@ const staticFiles=(req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname;
   const safe=path.startsWith('/assets/') && /^\/assets\/[\w.-]+$/.test(path);
   const file=safe?join(root,'dist',path):join(root,'dist/index.html');
-  try{const content=readFileSync(file);const type=file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html';res.writeHead(200,{'Content-Type':type+'; charset=utf-8','X-Content-Type-Options':'nosniff'});res.end(content);}catch{res.statusCode=404;res.end('Not found');}
+  try{const content=readFileSync(file);const extension=file.split('.').pop();const type=({js:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',ttf:'font/ttf',woff2:'font/woff2',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg'})[extension]||'text/html; charset=utf-8';res.writeHead(200,{'Content-Type':type,'X-Content-Type-Options':'nosniff','Cache-Control':safe?'public, max-age=31536000, immutable':'no-cache'});res.end(content);}catch{res.statusCode=404;res.end('Not found');}
 };
 const server=createServer(async(req,res)=>{
   try{
