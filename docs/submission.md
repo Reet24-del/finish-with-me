@@ -12,7 +12,7 @@ A task recovery assistant that helps a stuck learner or developer work through o
 Getting stuck can make returning to an unfinished project or study session harder. A reminder leaves the blocker unresolved. This prototype preserves the blocker and prior attempts, helps make a bounded repair or practice step, and records a checkable result.
 
 ## Current implementation
-An IRIS interoperability production routes a coding investigation to a native AI Hub agent with an InspectTask tool. The returned candidate is independently checked in a restricted JavaScript interpreter. Passing checks require user approval before saving. A separate local linear-equation flow requires a fresh transfer answer. The current profiles are receipt totals and linear equations; arbitrary repositories and subjects are outside this version.
+`Finish.DecisionProcess` receives a work item, calls the AI Hub agent, and runs an Embedded Python completion gate. The gate routes to needs-evidence, reject, escalate, or pending-approval. Pending approval and escalation are `EnsLib.Workflow` tasks (`Finish.Reviewer`, `Finish.Supervisor`). The Node app displays that decision and calls IRIS to approve or send it back. Receipt-total checks run in the IRIS gate when the task was investigated there; the same example still runs locally without IRIS. A seeded stuck-transform task uses `PrepareRepair`. The full session, including the agent prompt and the gate result, is a Visual Trace.
 
 ## Required before submitting
 - Load the AI Hub Community image and run the ObjectScript import/production startup.

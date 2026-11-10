@@ -1,6 +1,6 @@
 import { createTask, invalidate, localInvestigate, runChecks, approve, answerStudy, publicTask, event, hash } from './domain.js';
 import { isGeneral, recordProjectEvidence } from './general.js';
-import { investigateWithIris, assessStudyWithIris } from './iris.js';
+import { investigateWithIris, assessStudyWithIris, checkWithIris, verifyWithIris, approveWithIris } from './iris.js';
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));}
 async function body(req) {
   if(!req.headers['content-type']?.startsWith('application/json')) throw Error('Send application/json.');
@@ -19,7 +19,7 @@ export function api(store) {
           const response=await fetch(new URL('health',process.env.IRIS_BASE_URL.endsWith('/')?process.env.IRIS_BASE_URL:process.env.IRIS_BASE_URL+'/'),{headers,signal:AbortSignal.timeout(1800)});
           irisVerified=response.ok&&(await response.json()).provider==='InterSystems IRIS AI Hub';
         }catch{}
-        return json(res,200,{ok:true,mode:process.env.IRIS_BASE_URL?'iris-configured':'local',irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',capabilities:['project','subject','receipt-total','linear-equations'],message:irisVerified?'IRIS AI Hub is responding.':'Local guided completion is ready; configure AI Hub for live project investigations.'});
+        return json(res,200,{ok:true,mode:process.env.IRIS_BASE_URL?'iris-configured':'local',irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',capabilities:['project','subject','integration','receipt-total','linear-equations'],message:irisVerified?'IRIS production Finish.Production is responding. Completion is decided there.':'Local guided completion is ready; configure AI Hub for live decisions.'});
       }
       if(req.method==='GET'&&path==='/api/tasks'){await store.queue;return json(res,200,{tasks:store.data.tasks.map(publicTask)});}
       if(req.method!=='POST')return json(res,404,{error:'Route not found.'});
@@ -52,13 +52,16 @@ export function api(store) {
           if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 32,000 characters.');
           task.proposal.code=input.code;task.proposal.hash=hash(input.code);task.stage='prepare';delete task.checks;delete task.evidence;delete task.approvalToken;task.revision++;event(task,'Candidate edited. Run checks again.');
         } else if(action==='check'){
-          if(task.kind!=='coding'||!task.proposal)throw Error('Investigate the coding task before checking it.');
-          if(input.code!==undefined){if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 32,000 characters.');task.proposal.code=input.code;task.proposal.hash=hash(input.code);}
-          runChecks(task);
+          if(task.decisionOwner==='iris')await checkWithIris(task,input.code);
+          else {
+            if(task.kind!=='coding'||!task.proposal)throw Error('Investigate the coding task before checking it.');
+            if(input.code!==undefined){if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 12,000 characters.');task.proposal.code=input.code;task.proposal.hash=hash(input.code);}
+            runChecks(task);
+          }
         }
-        else if(action==='approve')approve(task,input.token);
+        else if(action==='approve'){if(task.decisionOwner==='iris')await approveWithIris(task,input);else approve(task,input.token);}
         else if(action==='answer'){if(isGeneral(task))await assessStudyWithIris(task,input.answer);else answerStudy(task,input.answer);}
-        else if(action==='verify')recordProjectEvidence(task,input);
+        else if(action==='verify'){if(task.decisionOwner==='iris'||process.env.IRIS_BASE_URL)await verifyWithIris(task,input);else recordProjectEvidence(task,input);}
         else if(action==='pause'){
           if(typeof input.breadcrumb!=='string'||!input.breadcrumb.trim()||input.breadcrumb.length>2000)throw Error('Leave a short next step before pausing.');
           task.breadcrumb=input.breadcrumb.trim();task.paused=true;task.revision++;event(task,'Saved your return point.');

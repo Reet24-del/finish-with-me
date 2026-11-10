@@ -1,8 +1,8 @@
 # Finish With Me
 
-**A small-step completion coach for the work you keep getting stuck on.** It helps with one concrete piece of a coding project or study session, does useful work alongside you, and only closes the task when there is evidence of a result.
+An IRIS Interoperability production routes a stuck work item to an AI Hub agent; the agent proposes a bounded action; a deterministic IRIS gate and a Workflow Engine human approval decide completion.
 
-This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. Native AI Hub tools inspect the task and capture a proposed repair without executing it. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
+This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The work item enters `Finish.Production` as an interoperability message. `Finish.DecisionProcess` calls the AI Hub agent, then an Embedded Python gate routes the result to needs-evidence, reject, escalate, or pending-approval. A passing gate opens an `EnsLib.Workflow` task. The Node application stores the task and renders that decision. When IRIS is connected, approve and send-back call the production; they do not decide completion themselves. The original receipt-total and linear-equation examples still run locally when IRIS is not connected.
 
 [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
 
@@ -72,36 +72,67 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
    docker compose up --build -d app
    ```
 
-6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. Project investigations, study preparation and answer assessments route through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
+6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. Investigations, checks, recorded verification, study assessment, and approve/send-back then go through `Finish.DecisionService` → `Finish.DecisionProcess`. This health label confirms connectivity, not the quality of any proposed repair.
 
 The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
-## Workflow
+## Architecture
 
 ```text
-Your files / notes → app API → authenticated IRIS REST
-                              → Interoperability production
-                              → native AI Hub agent → InspectTask
-                                 ├ PrepareProject → replacement + user-run checks
-                                 ├ PrepareLesson → explanation + private rubrics
-                                 └ AssessAnswer → AI feedback + accepted/retry
-Evidence → explicit user approval → saved completion record
+Browser
+  → Node API                         stores the task and renders the decision
+    → POST /csp/user/finish/decide   Finish.Message.WorkItem
+      → Finish.DecisionService
+        → Finish.DecisionProcess
+            → Finish.AgentOperation  AI Hub call, only for investigate / assess
+            → Finish.GateOperation   Embedded Python gate (iris/gate/engine.py)
+            → Finish.Reviewer        Workflow Engine approval
+              or Finish.Supervisor   escalation
+        ← Finish.Message.Decision
 ```
 
-The agent has no completion or code-execution tool. General project proposals never modify repository files automatically. The user runs relevant checks and supplies verification results. General study assessment is a separate AI Hub request that receives the stored question, private rubric, source and learner answer. Only the active question is sent to the browser; private rubrics are stripped from every task response. Generated questions may still be imperfect—review them against the source and use **Rework with this context** when needed.
+| Outcome | Meaning |
+| --- | --- |
+| needs-evidence | The proposal is stored, or the checks failed. The work item stays open. |
+| pending-approval | The gate passed. `Finish.Reviewer` has an Approve/Reject workflow task. |
+| escalate | Repeated failure, or a stuck message with no failure signature. `Finish.Supervisor` gets the task. |
+| reject | The proposal or the evidence is not acceptable, or the reviewer sent it back. |
+| complete | The reviewer approved and the gate still accepts the same evidence. |
 
-For the original examples, the restricted JavaScript AST interpreter checks eight receipt-total cases, and deterministic arithmetic validates the equation exercise.
+Visual Trace shows one session per production call. A proposal session is service → process → agent → gate, and a workflow operation when the gate asks for a person. The later approve or send-back session is service → process → gate recheck → workflow completion. Message descriptions name each step.
+
+`Finish.Message.AgentCall` carries the prompt, prompt version `finish-decision-1`, target tool, and task payload. `Finish.Message.AgentResult` carries the model, reply, tool trace, proposal, input tokens, output tokens, and latency. `Finish.Message.GateResult` carries the outcome, reason, and, for the receipt example, the eight check rows. That is the LLM trace for this production: the model call is an interoperability message, not a side log.
+
+To inspect a run, sign in to the Management Portal as `_SYSTEM` with the password from `.env`, switch to the `USER` namespace, and open Interoperability → View → Messages for `Finish.Production`. Open the session and choose Visual Trace. The same user's workflow inbox is Interoperability → Manage → Workflow → Workflow Inbox. `scripts/setup-iris.sh` adds `_SYSTEM` to `Finish.Reviewer` and `Finish.Supervisor`.
+
+The agent has no completion or code-execution tool. General project proposals never modify repository files automatically. The user runs relevant checks and supplies verification results; the IRIS gate accepts or rejects that evidence and, when it passes, waits for the workflow task. General study assessment is a separate AI Hub request that receives the stored question, private rubric, source and learner answer. Only the active question is sent to the browser; private rubrics are stripped from every task response. Generated questions may still be imperfect—review them against the source and use **Rework with this context** when needed.
+
+For the original examples without IRIS, the restricted JavaScript AST interpreter checks eight receipt-total cases, and deterministic arithmetic validates the equation exercise. With IRIS connected, the receipt-total investigate still uses the agent, and the eight checks run inside the Embedded Python gate. The seeded **Example: Stuck transform** is an interoperability failure: the agent proposes a repair with `PrepareRepair`, and the gate requires a recorded replay before workflow approval. Three failed verifications escalate to `Finish.Supervisor`.
 
 ## Project layout
 
 - `src/` — React interface.
 - `server/` — local HTTP API, durable task store, IRIS client, and bounded code checker.
-- `iris/src/Finish/` — IRIS REST dispatcher, AI Hub agent/tool, interoperability messages, and production.
+- `iris/src/Finish/` — REST dispatcher, decision service and process, AI Hub operation, Embedded Python gate, workflow operations, and production.
+- `iris/gate/engine.py` — deterministic gate loaded by `Finish.Gate.Rules` at `/durable/finish/gate_engine.py`.
 - `docker-compose.yml` — local IRIS and application services.
 
 ## Configuration and privacy
 
 Task data is stored in `.data/workspace.json` in local mode or the `app-data` Docker volume in Compose mode. The IRIS provider key remains in the IRIS container environment. Uploaded text and notes are stored with your task and sent through IRIS to the selected LLM provider when you request work or feedback. Only include material you are allowed to share with that provider. Credentials stay server-side; text-file selection rejects common private-key and .env filenames.
+
+## Contest bonuses
+
+These are the published contest bonuses this repository actually implements:
+
+- **Embedded Python (3).** `Finish.Gate.Rules` is a `[ Language = python ]` method. Every gate decision, including the receipt-total checks, runs `iris/gate/engine.py` inside the IRIS process.
+- **Workflow Engine (2).** `Finish.Reviewer` and `Finish.Supervisor` are `EnsLib.Workflow` operations. A passing gate creates a workflow task. Approve and send-back complete that task through `EnsLib.Workflow.Engine`. The Management Portal inbox shows the same tasks.
+- **Docker container usage (2).** `docker compose up` runs the AI Hub image and the Node app. `scripts/setup-iris.sh` loads the classes, installs the gate file, configures the REST application and workflow roles, smoke-tests the gate, and starts `Finish.Production`.
+- **Online demo (2).** [finish-with-me.onrender.com](https://finish-with-me.onrender.com/) serves the interface. That hosted instance stays in local demo mode until a remote IRIS endpoint is configured, so the production decision path is demonstrated with the Docker stack above.
+- **Video (3).** The [YouTube walkthrough](https://www.youtube.com/watch?v=aBBQBlfhaA8) shows the earlier receipt-total and algebra examples. It does not show the Visual Trace of this decision process.
+- **Community idea DPI-I-689 (4).** [Use InterSystems Interoperability as a traceability tool for GenAI LLM pipelines](https://ideas.intersystems.com/ideas/DPI-I-689) (Community Opportunity). Each AI Hub call is a persisted request/response in the same session as the gate: prompt version, prompt, model, tool trace, proposal, token counts, and latency. This entry does not use Vector Search.
+
+Not claimed here: Production Extension (PEX), a custom adapter, a ZPM package, the contest questionnaire, a reported AI Hub or Embedded Python bug, or a Developer Community article.
 
 ## Contest and overlap note
 
@@ -124,7 +155,7 @@ MIT. See [LICENSE](LICENSE).
 
 ## Implementation scope and verification
 
-New tasks use `project` and `subject` profiles. Source/notes are provided as pasted text or text-file selections (combined context up to 32,000 characters). Binary PDFs, repository cloning, autonomous file changes, execution of arbitrary project code and whole-project completion are not implemented. The `receipt-total` and `linear-equations` profiles remain as fixed examples. General project work, lesson generation and answer assessment all use native IRIS AI Hub tools.
+New tasks use `project` and `subject` profiles. The seeded `integration` profile is a failed transform. Source/notes are provided as pasted text or text-file selections (combined context up to 32,000 characters). Binary PDFs, repository cloning, autonomous file changes, execution of arbitrary project code and whole-project completion are not implemented. The `receipt-total` and `linear-equations` profiles remain as fixed examples and still complete locally without IRIS. With IRIS connected, receipt-total checks and every approve/send-back for an IRIS-owned task are decided by the production.
 
 The broader workflows were verified with a Python pagination task (four checks executed outside the application) and a biology session that rejected an instruction-only response and an incorrect transfer answer. Both completed through the API with explicit approval; see [docs/general-verification.json](docs/general-verification.json). These are synthetic scenario checks, not a guarantee of model accuracy across all subjects or projects.
 
@@ -134,4 +165,6 @@ Full Docker verification on build `2027.1.0AI.109.0` succeeded using Groq `opena
 
 Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. Run `node scripts/verify-live.mjs` to repeat the synthetic live scenario with your own key; it permits up to three checked proposals and records the actual outcome. For a host-run app, set `IRIS_BASE_URL=http://127.0.0.1:52773/csp/user/finish/` in `.env`.
 
-To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result.
+To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result. After this decision-path change, that script still drives the Node API; investigate, the receipt checks, and approval are forwarded to the production when the task is IRIS-owned.
+
+The deterministic gate is also covered by `python3 -m unittest test_engine.py` in `iris/gate`, and `npm test` checks that the Node client does not mark a task complete unless the production outcome is `complete`. Those tests do not start IRIS. `scripts/setup-iris.sh` compiles the classes, runs `Finish.Gate.Rules.SmokeTest()` inside the container, and starts the production; that step needs the local AI Hub image.

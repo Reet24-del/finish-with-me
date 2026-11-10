@@ -3,6 +3,9 @@ set -eu
 cd "$(dirname "$0")/.."
 command -v docker >/dev/null 2>&1 || { echo 'Install and start Docker Desktop first.' >&2; exit 1; }
 docker compose cp iris/src/. iris:/tmp/finish-src
+docker compose exec -T iris mkdir -p /durable/finish
+docker compose cp iris/gate/engine.py iris:/durable/finish/gate_engine.py
+docker compose exec -T -u 0 iris chown -R 51773:51773 /durable/finish || true
 setup_output=$(mktemp)
 trap 'rm -f "$setup_output"' EXIT
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
@@ -21,6 +24,14 @@ IRIS
 then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_REST_OK' "$setup_output" || exit 1
+if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
+Set sc = ##class(Finish.Gate.Rules).SmokeTest()
+If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) Halt }
+Halt
+IRIS
+then cat "$setup_output"; exit 1; fi
+cat "$setup_output"
+grep -q '^FINISH_GATE_OK' "$setup_output" || exit 1
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
 Do ##class(Ens.Director).StopProduction()
 Set sc = ##class(Ens.Director).StartProduction("Finish.Production")

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-export const isGeneral=t=>['project','subject'].includes(t.profile);
+export const isGeneral=t=>['project','subject','integration'].includes(t.profile);
 export const fingerprint=t=>createHash('sha256').update(JSON.stringify([t.title,t.description,t.blocker,t.tried,t.source,t.material,t.criteria,t.subject])).digest('hex');
 const text=(v,max=24000)=>{if(typeof v!=='string'||!v.trim()||v.length>max)throw Error('The AI response is incomplete or too large. Try again with a smaller task.');return v.trim();};
 export function applyWork(task,data){
