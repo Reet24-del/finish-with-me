@@ -24,6 +24,7 @@ IRIS
 then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_REST_OK' "$setup_output" || exit 1
+grep -q '^FINISH_WORKFLOW_OK' "$setup_output" || exit 1
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
 Set sc = ##class(Finish.Gate.Rules).SmokeTest()
 If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) Halt }

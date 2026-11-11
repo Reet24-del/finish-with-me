@@ -1,0 +1,226 @@
+{
+  "synthetic": true,
+  "at": "2026-11-11T12:08:19.613Z",
+  "results": [
+    {
+      "name": "correct",
+      "provider": "InterSystems Embedded Python",
+      "astHash": "f1c05424f876a01c4ac71dbae08e41f4a40a554d1a32da83af7031fbff3e668e",
+      "checks": [
+        {
+          "name": "Numeric strings add to 30",
+          "passed": true,
+          "actual": "30",
+          "expected": "30"
+        },
+        {
+          "name": "An empty list returns zero",
+          "passed": true,
+          "actual": "0",
+          "expected": "0"
+        },
+        {
+          "name": "Numbers and decimals work",
+          "passed": true,
+          "actual": "11.5",
+          "expected": "11.5"
+        },
+        {
+          "name": "Nonnumeric prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Blank prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Null prices are rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Infinity is rejected",
+          "passed": true,
+          "actual": "Invalid price",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Non-array input is rejected",
+          "passed": true,
+          "actual": "Expected an array",
+          "expected": "An input validation error"
+        }
+      ]
+    },
+    {
+      "name": "buggy",
+      "provider": "InterSystems Embedded Python",
+      "astHash": "396edb30d62fbb79308fbd188c89be5db506185291ecb93f2292e3283be3e087",
+      "checks": [
+        {
+          "name": "Numeric strings add to 30",
+          "passed": false,
+          "actual": "01020",
+          "expected": "30"
+        },
+        {
+          "name": "An empty list returns zero",
+          "passed": true,
+          "actual": "0",
+          "expected": "0"
+        },
+        {
+          "name": "Numbers and decimals work",
+          "passed": false,
+          "actual": "102.5-1",
+          "expected": "11.5"
+        },
+        {
+          "name": "Nonnumeric prices are rejected",
+          "passed": false,
+          "actual": "0oops",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Blank prices are rejected",
+          "passed": false,
+          "actual": "0 ",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Null prices are rejected",
+          "passed": false,
+          "actual": "0",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Infinity is rejected",
+          "passed": false,
+          "actual": "0Infinity",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Non-array input is rejected",
+          "passed": false,
+          "actual": "Unsupported member",
+          "expected": "An input validation error"
+        }
+      ]
+    },
+    {
+      "name": "unsupported",
+      "provider": "InterSystems Embedded Python",
+      "astHash": "9c07d5837449155611975bdcd5ec767e4cff7774c3f798b481045d2a59c0dca5",
+      "checks": [
+        {
+          "name": "Numeric strings add to 30",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "30"
+        },
+        {
+          "name": "An empty list returns zero",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "0"
+        },
+        {
+          "name": "Numbers and decimals work",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "11.5"
+        },
+        {
+          "name": "Nonnumeric prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Blank prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Null prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Infinity is rejected",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Non-array input is rejected",
+          "passed": false,
+          "actual": "Unknown identifier: process",
+          "expected": "An input validation error"
+        }
+      ]
+    },
+    {
+      "name": "fake-validation",
+      "provider": "InterSystems Embedded Python",
+      "astHash": "71cbbfacdf1d8abb1af1cffeadee1d94be446053d40d869c1cf246418c164132",
+      "checks": [
+        {
+          "name": "Numeric strings add to 30",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "30"
+        },
+        {
+          "name": "An empty list returns zero",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "0"
+        },
+        {
+          "name": "Numbers and decimals work",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "11.5"
+        },
+        {
+          "name": "Nonnumeric prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Blank prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Null prices are rejected",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Infinity is rejected",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "An input validation error"
+        },
+        {
+          "name": "Non-array input is rejected",
+          "passed": false,
+          "actual": "Unknown identifier: fetch",
+          "expected": "An input validation error"
+        }
+      ]
+    }
+  ]
+}

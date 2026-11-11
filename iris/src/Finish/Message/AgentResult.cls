@@ -17,6 +17,8 @@ Property ToolTrace As %String(MAXLEN = 8000);
 
 Property ToolsUsed As %String(MAXLEN = 1000);
 
+Property RouteJson As %String(MAXLEN = 8000);
+
 Property ProposalJson As %String(MAXLEN = 80000);
 
 Property UsageJson As %String(MAXLEN = 8000);

@@ -2,6 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 export const isGeneral=t=>['project','subject','integration'].includes(t.profile);
 export const fingerprint=t=>createHash('sha256').update(JSON.stringify([t.title,t.description,t.blocker,t.tried,t.source,t.material,t.criteria,t.subject])).digest('hex');
 const text=(v,max=24000)=>{if(typeof v!=='string'||!v.trim()||v.length>max)throw Error('The AI response is incomplete or too large. Try again with a smaller task.');return v.trim();};
+export function applyRouting(task,data){
+ const route=data.route;if(!route)return false;
+ if(!['repair','hint','human'].includes(route.action)||!data.toolsUsed?.includes('ChooseRoute'))throw Error('The agent returned an invalid routing decision.');
+ task.routing={action:route.action,reason:text(route.reason,6000),hint:route.hint||'',workflowRequestId:route.workflowRequestId,workflowRole:route.workflowRole,traceSessionId:data.traceSessionId,provider:data.provider};
+ if(route.action==='repair')return false;
+ if(route.action==='human'&&!route.workflowRequestId)throw Error('Human escalation did not create a workflow request.');
+ delete task.evidence;delete task.approvalToken;delete task.proposal;delete task.study;
+ task.stage='understand';task.revision++;
+ task.events.push({id:randomUUID(),at:new Date().toISOString(),message:route.action==='human'?'The agent sent this blocker to the native Workflow review inbox. No work was approved.':'The agent offered a hint. The task remains open.',type:'info'});
+ return true;
+}
 export function applyWork(task,data){
  const d=data.decision;
  delete task.evidence;delete task.approvalToken;delete task.verificationNotes;delete task.verificationStatus;
@@ -15,7 +26,7 @@ export function applyWork(task,data){
   task.proposal={summary:'A lesson and two exercises were prepared from your material.',nextAction:'Explain your answer to the guided question, then tackle the independent question.',provider:data.provider,toolsUsed:data.toolsUsed,usage:data.usage,strategy:'Your material → guided explanation → independent practice',contextHash:fingerprint(task)};
  }
  task.stage='prepare';task.revision++;
- task.events.push({id:randomUUID(),at:new Date().toISOString(),message:'AI Hub inspected your supplied context and prepared the next piece of work.',type:'info'});
+ task.events.push({id:randomUUID(),at:new Date().toISOString(),message:`${data.provider} prepared the next piece of work from your supplied context.`,type:'info'});
 }
 export function recordProjectEvidence(task,input){
  if(task.kind!=='coding'||!isGeneral(task)||!task.proposal)throw Error('Prepare a project proposal first.');

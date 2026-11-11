@@ -209,6 +209,16 @@ class GateTests(unittest.TestCase):
         verify["evidenceInput"] = {**verify["evidenceInput"], "evidence": "I looked at the screen and it seemed better than before."}
         self.assertEqual(decide(verify)["outcome"], "reject")
 
+    def test_agent_routes_hint_and_human_before_a_repair(self):
+        hinted = decide({**PROJECT, "route": {"action": "hint", "reason": "Learner asked for a nudge", "hint": "Check the slice end."}})
+        self.assertEqual(hinted["outcome"], "needs-evidence")
+        self.assertEqual(hinted["route"]["action"], "hint")
+        human = decide({**PROJECT, "route": {"action": "human", "reason": "Repository files were not fetched."}})
+        self.assertEqual(human["outcome"], "escalate")
+        self.assertEqual(human["workflowRole"], "Finish.HumanReview")
+        repaired = decide({**PROJECT, "route": {"action": "repair", "reason": "The slice is local."}})
+        self.assertEqual(repaired["outcome"], "needs-evidence")
+
     def test_context_hash_matches_node_json_stringify(self):
         payload = {"title": "Fix \"quotes\"", "description": "line\nbreak", "blocker": "stuck", "tried": "", "source": "a/b", "material": "café", "criteria": "ok", "subject": "Py"}
         raw = json.dumps([payload[key] for key in ("title", "description", "blocker", "tried", "source", "material", "criteria", "subject")], separators=(",", ":"), ensure_ascii=False)

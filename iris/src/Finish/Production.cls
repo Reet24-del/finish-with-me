@@ -25,6 +25,18 @@ XData ProductionDefinition
     <Setting Target="Host" Name="AutoCreateRole">1</Setting>
     <Setting Target="Host" Name="LogTraceEvents">true</Setting>
   </Item>
+  <Item Name="Finish.TraceOperation" Category="trace" ClassName="Finish.Trace.Operation"><Setting Target="Host" Name="Enabled">true</Setting></Item>
+  <Item Name="Finish.HumanReview" Category="workflow" ClassName="Finish.Workflow.HumanApproval" PoolSize="1" Enabled="true" Foreground="false">
+    <Setting Target="Host" Name="AutoCreateRole">1</Setting>
+    <Setting Target="Host" Name="LogTraceEvents">true</Setting>
+  </Item>
+  <Item Name="Finish.GitHubIssues" Category="inbound" ClassName="Finish.Adapter.GitHubService">
+    <Setting Target="Host" Name="Enabled">true</Setting>
+    <Setting Target="Adapter" Name="CallInterval">120</Setting>
+    <Setting Target="Adapter" Name="Repository">Reet24-del/finish-with-me</Setting>
+    <Setting Target="Adapter" Name="Label">stuck</Setting>
+  </Item>
+  <Item Name="Finish.CheckOperation" Category="check" ClassName="Finish.Check.Operation"><Setting Target="Host" Name="Enabled">true</Setting></Item>
 </Production>
 }
 

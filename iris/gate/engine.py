@@ -59,6 +59,10 @@ def decide(data: dict) -> dict:
     if action in ("approve", "reject"):
         return decide_human(data)
     if action == "investigate":
+        routed = apply_route(data)
+        if routed is not None:
+            return routed
+    if action == "investigate":
         return decide_proposal(data)
     if action == "check":
         return decide_checks(data)
@@ -107,6 +111,30 @@ def decide_human(data: dict) -> dict:
     completed["checks"] = current.get("checks") or []
     completed["contextHash"] = current.get("contextHash") or ""
     return completed
+
+
+def apply_route(data: dict):
+    route = data.get("route")
+    if not isinstance(route, dict) or not route.get("action"):
+        return None
+    action = route.get("action")
+    reason = route.get("reason") if isinstance(route.get("reason"), str) else ""
+    if action == "repair":
+        return None
+    if action == "hint":
+        if not reason.strip():
+            return pack("reject", "A hint route needs a reason.")
+        return pack("needs-evidence", reason.strip(), route=route)
+    if action == "human":
+        if not reason.strip():
+            return pack("reject", "A human route needs a reason.")
+        return pack(
+            "escalate",
+            reason.strip(),
+            route=route,
+            workflowRole="Finish.HumanReview",
+        )
+    return pack("reject", "Choose repair, hint or human.")
 
 
 def decide_proposal(data: dict) -> dict:
@@ -381,7 +409,7 @@ def decide_assess(data: dict) -> dict:
 
 
 def pack(outcome: str, reason: str, **extra) -> dict:
-    return {
+    result = {
         "outcome": outcome,
         "reason": reason.strip(),
         "checks": extra.get("checks") or [],
@@ -390,6 +418,11 @@ def pack(outcome: str, reason: str, **extra) -> dict:
         "advance": extra.get("advance") or "",
         "contextHash": extra.get("contextHash") or "",
     }
+    if extra.get("route"):
+        result["route"] = extra["route"]
+    if extra.get("workflowRole"):
+        result["workflowRole"] = extra["workflowRole"]
+    return result
 
 
 def object_field(data: dict, key: str):

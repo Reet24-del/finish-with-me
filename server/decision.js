@@ -1,9 +1,15 @@
 import { event, hash } from './domain.js';
-import { applyWork } from './general.js';
+import { applyRouting, applyWork } from './general.js';
 
 export function applyIrisInvestigate(task, data) {
   assertDecision(data);
   if (data.outcome === 'reject') throw Error(irisError(data));
+  const route = data.gate?.route;
+  if (route?.action && data.toolsUsed?.includes('ChooseRoute')) {
+    const routed = applyRouting(task, {...data, route:{...route, workflowRequestId:data.workflowTaskId||route.workflowRequestId, workflowRole:data.role||route.workflowRole}, traceSessionId:data.sessionId});
+    remember(task, data);
+    if (routed) return;
+  }
   if (data.outcome !== 'escalate') {
     if (task.profile === 'receipt-total') applyReceipt(task, data);
     else applyWork(task, data);

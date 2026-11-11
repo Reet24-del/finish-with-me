@@ -32,11 +32,18 @@ ClassMethod ConfigureWorkflow() As %Status
     If $$$ISERR(sc) Return sc
     Set sc = ..EnsureRole("Finish.Supervisor","Reviews escalated Finish With Me decisions.")
     If $$$ISERR(sc) Return sc
+    Set sc = ..EnsureRole("Finish.HumanReview","Reviews a blocker the agent could not repair.")
+    If $$$ISERR(sc) Return sc
     Set sc = ..EnsureWorkflowUser("_SYSTEM")
     If $$$ISERR(sc) Return sc
     Set sc = ..EnsureMembership("Finish.Reviewer","_SYSTEM","Reviewer")
     If $$$ISERR(sc) Return sc
-    Return ..EnsureMembership("Finish.Supervisor","_SYSTEM","Supervisor")
+    Set sc = ..EnsureMembership("Finish.Supervisor","_SYSTEM","Supervisor")
+    If $$$ISERR(sc) Return sc
+    Set sc = ..EnsureMembership("Finish.HumanReview","_SYSTEM","Reviewer")
+    If $$$ISERR(sc) Return sc
+    Write "FINISH_WORKFLOW_OK",!
+    Return sc
 }
 
 ClassMethod EnsureRole(name As %String, description As %String) As %Status

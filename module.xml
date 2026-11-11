@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26">
+  <Document name="finish-with-me-iris.ZPM">
+    <Module>
+      <Name>finish-with-me-iris</Name>
+      <Version>0.3.0</Version>
+      <Packaging>module</Packaging>
+      <Description>IRIS decision production: CompletionAgent routing, Embedded Python gate, Workflow review, trace recorder, and GitHub inbound adapter.</Description>
+      <License>MIT</License>
+      <SourcesRoot>iris/src</SourcesRoot>
+      <Resource Name="Finish.PKG" Directory="iris/src"/>
+    </Module>
+  </Document>
+</Export>

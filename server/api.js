@@ -1,5 +1,7 @@
+import {checkWithIris as checkReceiptAst,importedIssues} from './native-checker.js';
+import { groqConfigured } from './groq.js';
 import { createTask, invalidate, localInvestigate, runChecks, approve, answerStudy, publicTask, event, hash } from './domain.js';
-import { isGeneral, recordProjectEvidence } from './general.js';
+import { isGeneral, recordProjectEvidence, applyRouting, applyWork } from './general.js';
 import { investigateWithIris, assessStudyWithIris, checkWithIris, verifyWithIris, approveWithIris } from './iris.js';
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));}
 async function body(req) {
@@ -7,25 +9,40 @@ async function body(req) {
   let bytes=0,text='';for await(const chunk of req){bytes+=chunk.length;if(bytes>160000)throw Error('Request is too large.');text+=chunk;}
   return JSON.parse(text||'{}');
 }
-export function api(store) {
+export function api(store,{database=null}={}) {
   return async(req,res,next)=>{
     const path=new URL(req.url,'http://127.0.0.1').pathname;
     if(!path.startsWith('/api/'))return next();
     try {
       if(req.method==='GET'&&path==='/api/health'){
-        let irisVerified=false;
-        if(process.env.IRIS_BASE_URL)try{
+        let irisVerified=false,storageVerified=!process.env.DATABASE_URL;
+        if(database)try{await database.pool.query({text:'SELECT 1',query_timeout:2500});storageVerified=true;}catch{}
+        if(process.env.AI_BACKEND!=='groq'&&process.env.IRIS_BASE_URL)try{
           const headers={};if(process.env.IRIS_USERNAME&&process.env.IRIS_PASSWORD)headers.Authorization='Basic '+Buffer.from(`${process.env.IRIS_USERNAME}:${process.env.IRIS_PASSWORD}`).toString('base64');
           const response=await fetch(new URL('health',process.env.IRIS_BASE_URL.endsWith('/')?process.env.IRIS_BASE_URL:process.env.IRIS_BASE_URL+'/'),{headers,signal:AbortSignal.timeout(1800)});
           irisVerified=response.ok&&(await response.json()).provider==='InterSystems IRIS AI Hub';
         }catch{}
-        return json(res,200,{ok:true,mode:process.env.IRIS_BASE_URL?'iris-configured':'local',irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',capabilities:['project','subject','integration','receipt-total','linear-equations'],message:irisVerified?'IRIS production Finish.Production is responding. Completion is decided there.':'Local guided completion is ready; configure AI Hub for live decisions.'});
+        return json(res,storageVerified?200:503,{ok:storageVerified,storageVerified,mode:process.env.AI_BACKEND==='groq'?'groq-configured':process.env.IRIS_BASE_URL?'iris-configured':'local',aiReady:irisVerified||groqConfigured(),aiProvider:groqConfigured()?'Groq (hosted)':irisVerified?'InterSystems IRIS AI Hub':null,irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',storage:process.env.DATABASE_URL?'postgres':process.env.RENDER?'ephemeral':'local-disk',capabilities:['project','subject','integration','receipt-total','linear-equations'],message:groqConfigured()?'Hosted Groq is configured; the IRIS production is a separate local mode.':irisVerified?'IRIS production Finish.Production is responding. Completion is decided there.':'Local guided completion is ready; configure AI Hub for live decisions.'});
       }
-      if(req.method==='GET'&&path==='/api/tasks'){await store.queue;return json(res,200,{tasks:store.data.tasks.map(publicTask)});}
+      if(req.method==='GET'&&path==='/api/tasks'){await store.queue;if(store.refresh)await store.refresh();return json(res,200,{tasks:store.data.tasks.map(publicTask)});}
       if(req.method!=='POST')return json(res,404,{error:'Route not found.'});
       if(req.headers.origin && req.headers.origin!==(process.env.PUBLIC_ORIGIN||process.env.RENDER_EXTERNAL_URL||`http://${req.headers.host}`))return json(res,403,{error:'Cross-origin changes are not allowed.'});
       const input=await body(req);
+      const imports=path==='/api/import-github'?await importedIssues():null;
       const result=await store.mutate(async data=>{
+        if(imports){
+          let count=0;
+          for(const issue of imports){
+            const key=`${issue.repository}#${issue.number}`;
+            if(data.tasks.some(t=>t.githubIssue?.key===key))continue;
+            if(data.tasks.length>=50)break;
+            const task=createTask({kind:'coding',title:String(issue.title).slice(0,120),blocker:String(issue.body||'Review this imported issue').slice(0,12000),source:`GitHub issue ${issue.url}\n${String(issue.body||'').slice(0,16000)}`});
+            task.githubIssue={key,url:issue.url};
+            if(issue.agentResult){try{if(!applyRouting(task,issue.agentResult)&&issue.agentResult.outcome==='needs-evidence'&&issue.agentResult.decision)applyWork(task,issue.agentResult);}catch{/* keep the imported issue open for a fresh investigation */}}
+            data.tasks.unshift(task);count++;
+          }
+          return {imported:count};
+        }
         if(path==='/api/tasks'){
           if(data.tasks.length>=50)throw Error('This local workspace supports up to 50 tasks.');
           const task=createTask(input);data.tasks.unshift(task);return {task:publicTask(task)};
@@ -36,6 +53,11 @@ export function api(store) {
         if(input.revision!==task.revision)throw Error('This task changed. Reload it before continuing.');
         const action=match[2];
         if(task.status==='completed'&&action!=='reopen')throw Error('Reopen this task before changing it.');
+        if(process.env.AI_BACKEND==='groq'&&(action==='answer'||action==='investigate'&&input.engine!=='local')){
+          const hour=Math.floor(Date.now()/3600000);if(data.aiUsage?.hour!==hour)data.aiUsage={hour,count:0};
+          if(data.aiUsage.count>=30)throw Error('This workspace has reached its hourly AI allowance. Try again later.');
+          data.aiUsage.count++;
+        }
         if(action==='update'){
           for(const key of ['blocker','tried','source','material','criteria','subject','description']) if(input[key]!==undefined&&(typeof input[key]!=='string'||input[key].length>32000))throw Error('Fields must be text up to 32,000 characters.');
           const changed=['blocker','tried','source','material','criteria','subject','description'].some(key=>input[key]!==undefined&&input[key]!==task[key]);
@@ -46,7 +68,7 @@ export function api(store) {
           if(changed)for(const key of ['blocker','tried','source','material','criteria','subject','description'])if(input[key]!==undefined)task[key]=input[key];
           if(!task.blocker.trim())throw Error('Describe the blocker first.');
           invalidate(task);
-          if(input.engine==='iris')await investigateWithIris(task);else localInvestigate(task);
+          if(['iris','groq','ai'].includes(input.engine))await investigateWithIris(task);else localInvestigate(task);
         } else if(action==='candidate'){
           if(task.kind!=='coding'||!task.proposal)throw Error('Investigate first.');
           if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 32,000 characters.');
@@ -56,7 +78,8 @@ export function api(store) {
           else {
             if(task.kind!=='coding'||!task.proposal)throw Error('Investigate the coding task before checking it.');
             if(input.code!==undefined){if(typeof input.code!=='string'||input.code.length>12000)throw Error('Candidate must be text up to 12,000 characters.');task.proposal.code=input.code;task.proposal.hash=hash(input.code);}
-            runChecks(task);
+            const native=process.env.IRIS_BASE_URL&&process.env.AI_BACKEND!=='groq'?await checkReceiptAst(task.proposal.code):null;
+            runChecks(task,native);
           }
         }
         else if(action==='approve'){if(task.decisionOwner==='iris')await approveWithIris(task,input);else approve(task,input.token);}
