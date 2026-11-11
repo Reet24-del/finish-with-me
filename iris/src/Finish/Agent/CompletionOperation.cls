@@ -58,6 +58,11 @@ Method OnMessage(pRequest As Finish.Message.InvestigateRequest, Output pResponse
     } Catch ex {
         Set failure = {}
         Do failure.%Set("error",ex.DisplayString())
+        Do failure.%Set("durationMs",($ZHOROLOG-started)*1000)
+        Try {
+            If $IsObject($Get(agent)) Do failure.%Set("model",agent.Model)
+            If $IsObject($Get(session)) Do failure.%Set("usage",session.GetStats())
+        } Catch metadataError { }
         Do ##class(Finish.Trace.Recorder).Record($This,"AgentError",failure)
         Return ex.AsStatus()
     }

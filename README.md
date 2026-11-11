@@ -188,8 +188,10 @@ suppression were verified through the actual adapter.
 Interoperability-based LLM pipeline traceability. Here, Visual Trace links agent
 and tool events to the actual production and human-review messages. Compared
 with Langfuse this is a focused local workflow trace, not a replacement for its
-full LLM observability, evaluation or hosted analytics features. Native traces
-are not produced by the separately labeled hosted Groq path.
+full LLM observability, evaluation or hosted analytics features. Traces cover each agent.Chat invocation and its tools; token/timing metadata are
+aggregated session statistics, not separate HTTP wire logs for every provider
+round trip. Native traces are not produced by the separately labeled hosted
+Groq path.
 
 ### IPM package
 
