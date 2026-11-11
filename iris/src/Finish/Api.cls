@@ -7,6 +7,8 @@ Parameter CHARSET = "utf-8";
 XData UrlMap
 {
 <Routes>
+  <Route Url="/check" Method="POST" Call="Check" />
+  <Route Url="/imports" Method="GET" Call="Imports" />
   <Route Url="/health" Method="GET" Call="Health" />
   <Route Url="/investigate" Method="POST" Call="Investigate" />
 </Routes>
@@ -60,4 +62,41 @@ ClassMethod Investigate() As %Status
         Return $$$OK
     }
 }
+ClassMethod Check() As %Status
+{
+    Set %response.ContentType = "application/json; charset=utf-8"
+    Try {
+        Set input = {}.%FromJSON(%request.Content.Read(200000))
+        Set request = ##class(Finish.Message.CheckRequest).%New()
+        Set request.AstJSON = input.astJSON
+        Set sc = ##class(Ens.Director).CreateBusinessService("Finish.ApiService",.service)
+        $$$ThrowOnError(sc)
+        $$$ThrowOnError(service.SendRequestSync("Finish.CheckOperation",request,.response,15,"Embedded Python independent checks"))
+        Write response.Result.%ToJSON()
+    } Catch ex {
+        Set %response.Status = 400
+        Set result = {}
+        Do result.%Set("error",ex.DisplayString())
+        Write result.%ToJSON()
+    }
+    Return $$$OK
+}
+ClassMethod Imports() As %Status
+{
+    Set %response.ContentType = "application/json; charset=utf-8"
+    Set result = [], repo = ""
+    For {
+        Set repo = $Order(^FinishGitHub(repo)) Quit:repo=""
+        Set number = ""
+        For {
+            Set number = $Order(^FinishGitHub(repo,number)) Quit:number=""
+            If $Data(^FinishGitHub(repo,number,"snapshot")) Do result.%Push({}.%FromJSON(^FinishGitHub(repo,number,"snapshot")))
+            Quit:result.%Size()>=50
+        }
+        Quit:result.%Size()>=50
+    }
+    Write result.%ToJSON()
+    Return $$$OK
+}
+
 }

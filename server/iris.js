@@ -1,8 +1,10 @@
+import { groqDecision } from './groq.js';
 import { hash, event } from './domain.js';
-import { isGeneral, applyWork, applyAssessment } from './general.js';
+import { isGeneral, applyWork, applyAssessment, applyRouting } from './general.js';
 
 // This endpoint is implemented by iris/Finish/Api.cls. No credentials go to React.
 async function requestDecision(payload) {
+  if(process.env.AI_BACKEND==='groq')return groqDecision(payload);
   const base=process.env.IRIS_BASE_URL;
   if(!base) throw Error('Set IRIS_BASE_URL on the server to enable live AI Hub.');
   const headers={'Content-Type':'application/json'};
@@ -21,16 +23,18 @@ export async function investigateWithIris(task) {
   if(task.kind==='coding'&&!(task.source||task.material||'').trim())throw Error('Add relevant source files or project context before asking for a change.');
   if(task.kind==='study'&&!(task.material||'').trim())throw Error('Add your notes or source material so the lesson is grounded in what you are studying.');
   const data=await requestDecision(payload);
+  if(applyRouting(task,data))return;
   const required=task.kind==='coding'?'PrepareProject':'PrepareLesson';
   if(!data.toolsUsed.includes(required))throw Error('AI Hub did not prepare the required work. Try again.');
   applyWork(task,data);return;
  }
  const data=await requestDecision(payload);
+ if(applyRouting(task,data))return;
   if(task.kind!=='coding') throw Error('Live AI Hub currently supports the coding workflow. Use the local study exercise.');
   const code=data.decision.code;
   if(typeof code!=='string'||code.length>12000) throw Error('The AI Hub candidate is missing or too large.');
   task.proposal={summary:data.decision.summary.slice(0,4000),nextAction:String(data.decision.nextAction||'Review the candidate and run checks.').slice(0,1000),code,hash:hash(code),sourceHash:hash(task.source),provider:data.provider,strategy:'Inspect task → choose a repair → independently check',toolsUsed:data.toolsUsed,usage:data.usage};
-  task.stage='prepare';task.revision++;event(task,'AI Hub inspected the task and returned a candidate. Checks have not run.');
+  task.stage='prepare';task.revision++;event(task,`${data.provider} returned a candidate. Checks have not run.`);
 }
 
 export async function assessStudyWithIris(task,input) {

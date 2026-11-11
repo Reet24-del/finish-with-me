@@ -2,11 +2,11 @@
 
 **A small-step completion coach for the work you keep getting stuck on.** It helps with one concrete piece of a coding project or study session, does useful work alongside you, and only closes the task when there is evidence of a result.
 
-This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. Native AI Hub tools inspect the task and capture a proposed repair without executing it. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
+This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. Native AI Hub tools inspect the task and choose repair, hint or human review. Human escalations enter the native Workflow Engine; preparation tools never execute or approve the work. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
 
-[Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
+[Download the demo MP4](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4) · [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
 
-[Open the hosted website](https://finish-with-me.onrender.com/) — multipage demo with isolated visitor workspaces. The hosted instance uses demo mode until a remote IRIS endpoint is configured.
+[Open the hosted website](https://finish-with-me.onrender.com/) — multipage demo with isolated visitor workspaces. The website labels its active provider and storage mode. Optional free Groq hosting is separate from the native IRIS workflow; durable cloud storage requires a configured external database.
 
 [Deploy a free demo on Render](https://render.com/deploy?repo=https://github.com/Reet24-del/finish-with-me) · [Hosting details](docs/hosting.md)
 
@@ -135,3 +135,96 @@ Full Docker verification on build `2027.1.0AI.109.0` succeeded using Groq `opena
 Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. Run `node scripts/verify-live.mjs` to repeat the synthetic live scenario with your own key; it permits up to three checked proposals and records the actual outcome. For a host-run app, set `IRIS_BASE_URL=http://127.0.0.1:52773/csp/user/finish/` in `.env`.
 
 To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result.
+
+
+## Native interoperability workflow (0.3)
+
+`Finish.AgentOperation` now requires the native agent to call `InspectTask` and
+`ChooseRoute`. Repair prepares work; hint returns one nudge without grading or
+completion; human sends an `EnsLib.Workflow.TaskRequest` to `Finish.HumanReview`.
+A human task being queued is not human approval. The task stays open and needs
+fresh evidence before completion.
+
+Each agent run emits native child messages to `Finish.TraceOperation`: start,
+actual inspection/routing/preparation tool data, result or error. The result
+includes the model, prompt version, duration and AI Hub token statistics. The
+[synthetic routing report](docs/routing-verification.json) records the three live
+routes and actual native Workflow inbox evidence.
+
+The receipt checker uses `Finish.CheckOperation` → `Finish.Check.Receipt` in
+Embedded Python in native mode. It interprets only the bounded JavaScript AST;
+submitted code is never evaluated, imported or run as host code. The original
+JavaScript checker remains for disconnected examples and hosted Groq mode.
+Run `node scripts/verify-native-checker.mjs` with a private local `.env` to compare
+valid, buggy and unsupported candidates against the native checker.
+
+`Finish.GitHubIssues` is a custom inbound adapter/service. In Production Settings,
+set **Repository**, **Label** (default `stuck`) and **CallInterval**. It polls at
+most ten open issues per pass, excludes pull requests and deduplicates by issue
+number/update timestamp. It does not fetch repository files or modify GitHub.
+The private native workspace has **Import stuck GitHub issues** to bring its
+recorded issues into the app. Shared hosted visitor workspaces cannot import
+this private native feed. The supplied [fixture](test/fixtures/github-issues.json)
+is synthetic and creates no GitHub issue; ingestion, PR exclusion and duplicate
+suppression were verified through the actual adapter.
+
+### Reproduce DPI-I-689 in Visual Trace
+
+1. Run the native Docker setup and `sh scripts/setup-iris.sh` with your own key.
+2. Create a project with enough source to repair; ask for a hint on a separate
+   study task; create a third task that needs an authorized maintainer without
+   access to repository files. The native agent selects the route in each case.
+3. Open Management Portal → Interoperability → View → Messages, locate the
+   investigation and open **Visual Trace**. Match its session ID to the returned
+   `traceSessionId`; expand the child events sent to `Finish.TraceOperation`.
+4. Inspect `AgentResult` for model, prompt version, token statistics and duration;
+   follow `ChooseRoute` and preparation events. The recorded repair/hint/human
+   runs used sessions 77, 89 and 99 on the test instance. IDs will differ on yours.
+5. For human routing, inspect `Finish.HumanReview` in the native Workflow Portal.
+   The existing local reviewer is added to that workflow role by setup; no
+   security password/role permissions are added for this inbox configuration.
+
+[Community idea DPI-I-689](https://ideas.intersystems.com/ideas/DPI-I-689) asks for
+Interoperability-based LLM pipeline traceability. Here, Visual Trace links agent
+and tool events to the actual production and human-review messages. Compared
+with Langfuse this is a focused local workflow trace, not a replacement for its
+full LLM observability, evaluation or hosted analytics features. Native traces
+are not produced by the separately labeled hosted Groq path.
+
+### IPM package
+
+`module.xml` packages the native classes as `finish-with-me-iris` version 0.3.0.
+With IPM installed, load the checked-out source in an AI Hub-enabled,
+Interoperability-enabled namespace:
+
+```objectscript
+zpm "load /path/to/finish-with-me -v"
+```
+
+Local IPM 0.10.10 load, validation, compilation and activation passed. This
+installs classes only; follow the native setup instructions to configure your
+private provider settings, authenticated REST app and reviewer inbox. Public
+IPM registry publication is pending; `zpm "install finish-with-me-iris"` is not
+claimed to work from the public registry yet. No vendor image, private key or
+task data is packaged.
+
+## Contest bonuses
+
+These are evidence-backed requests for organizer review, not awarded points.
+Rules: [official bonus announcement](https://community.intersystems.com/post/technology-bonuses-intersystems-programming-contest-ai-agents-interoperability-workflows).
+
+| Bonus | Published points | Evidence and status |
+| --- | ---: | --- |
+| Docker | 2 | [Compose](docker-compose.yml), [native Docker verification](docs/docker-verification.json). Native IRIS runs in Docker. |
+| Downloadable video | 3 | [MP4, no registration](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4). Original 9 November video; predates the new routes. |
+| Workflow Engine | 2 | [Native escalation](iris/src/Finish/Agent/CompletionOperation.cls), [live routing and native inbox evidence](docs/routing-verification.json). Incomplete task created; no automatic approval. |
+| Custom adapter | 2 | [GitHub inbound adapter](iris/src/Finish/Adapter/GitHubInbound.cls), [service](iris/src/Finish/Adapter/GitHubService.cls), [app verification](docs/interop-app-verification.json). Live empty-feed poll and synthetic ingestion/PR exclusion/deduplication verified. |
+| Embedded Python | 3 | [Bounded checker](iris/src/Finish/Check/Receipt.cls), [production operation](iris/src/Finish/Check/Operation.cls), [verification](docs/embedded-python-verification.json). |
+| Community idea DPI-I-689 | 4 | [Idea](https://ideas.intersystems.com/ideas/DPI-I-689), [native trace recorder](iris/src/Finish/Trace/Recorder.cls), [reproduction instructions above](#reproduce-dpi-i-689-in-visual-trace). Open Exchange dedicated idea-field update still pending. |
+| IPM / ZPM | 2 | [Manifest](module.xml); local installation verified. Registry publication pending; not claimed complete. |
+| Questionnaire | 1 | [Project-backed draft](docs/questionnaire-draft.md); not submitted. |
+| First and second DC articles | 2 + 1 | [Build article draft](docs/articles/01-building-finish-with-me.md), [reproduction article draft](docs/articles/02-reproducing-native-workflow.md); not published. |
+| Online demo | 2 | [Public site](https://finish-with-me.onrender.com/). Separately hosted mode; no claim of a public native IRIS workflow. Awaiting organizer eligibility review. |
+
+The [bonus comment](docs/bonus-claim-draft.md) is prepared but has not been posted.
+No vendor-bug, PEX, Vector Search or guaranteed prize claim is made.

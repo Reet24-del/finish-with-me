@@ -22,6 +22,8 @@ then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_REST_OK' "$setup_output" || exit 1
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
+Set sc = ##class(Finish.Install).ConfigureWorkflow()
+If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) } Else { Write "FINISH_WORKFLOW_OK",! }
 Do ##class(Ens.Director).StopProduction()
 Set sc = ##class(Ens.Director).StartProduction("Finish.Production")
 If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) } Else { Write "FINISH_PRODUCTION_OK",! }
@@ -29,4 +31,5 @@ Halt
 IRIS
 then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
+grep -q '^FINISH_WORKFLOW_OK' "$setup_output" || exit 1
 grep -q '^FINISH_PRODUCTION_OK' "$setup_output" || exit 1

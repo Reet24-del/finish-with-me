@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "at": "2026-11-11T12:12:48.862Z",
+  "receipt": {
+    "taskId": "231fcf9e-63d0-433a-952f-1849a2f43137",
+    "checkEngine": "InterSystems Embedded Python",
+    "passed": 8,
+    "status": "completed"
+  },
+  "github": {
+    "liveFeed": "No open stuck-labeled issues during verification",
+    "fixtureImported": true,
+    "pullRequestExcluded": true,
+    "adapterDeduplication": true,
+    "appFirstImport": 1,
+    "appSecondImport": 0,
+    "taskId": "73234f28-7f2a-4e8e-aa49-22cc496ba9da",
+    "route": {
+      "action": "human",
+      "reason": "The task requires access to repository source files and logs, which are not available. An authorized maintainer must provide the necessary access or decide the appropriate policy before any repair can be proposed.",
+      "hint": "Not applicable",
+      "workflowRequestId": "103",
+      "workflowRole": "Finish.HumanReview",
+      "traceSessionId": 118,
+      "provider": "InterSystems IRIS AI Hub"
+    }
+  }
+}

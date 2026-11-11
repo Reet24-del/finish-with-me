@@ -3,10 +3,13 @@ Class Finish.Agent.TaskTools Extends %AI.Tool
 Property TaskContext As %DynamicObject;
 Property InspectionCount As %Integer [ InitialExpression = 0 ];
 Property Proposal As %DynamicObject;
+Property Route As %DynamicObject;
+Property TraceHost As Ens.BusinessOperation;
 
 /// Inspect one task and return its concrete completion boundary to the agent.
 Method InspectTask() As %DynamicObject
 {
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"InspectTask",..TaskContext)
     Set ..InspectionCount = ..InspectionCount+1
     Set kind = ..TaskContext.%Get("kind")
     Set title = ..TaskContext.%Get("title")
@@ -49,10 +52,15 @@ Method PrepareCandidate(code As %String, summary As %String = "Prepared a repair
     If ..TaskContext.%Get("profile") '= "receipt-total" Return {"error":"Use the tool appropriate to this task profile."}
     If ($Length(code)>12000) || (code="") Return {"error":"Return a nonempty candidate of at most 12000 characters."}
     If $Find(code,"function total") = 0 Return {"error":"code must contain the JavaScript total function source, not a JSON object or Markdown."}
+    If ..TaskContext.%Get("kind") '= "study-review" {
+        If '$IsObject(..Route) Return {"error":"Call ChooseRoute first."}
+        If ..Route.action '= "repair" Return {"error":"The selected route does not prepare work."}
+    }
     Set ..Proposal = {}
     Do ..Proposal.%Set("summary",summary)
     Do ..Proposal.%Set("nextAction",nextAction)
     Do ..Proposal.%Set("code",code)
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"PrepareCandidate",..Proposal)
     Return {"prepared":true,"message":"Candidate saved for independent checks. It has not been executed or approved."}
 }
 
@@ -61,12 +69,17 @@ Method PrepareProject(summary As %String, nextAction As %String, artifact As %St
 {
     If ..InspectionCount < 1 Return {"error":"Call InspectTask first."}
     If ..TaskContext.%Get("profile") '= "project" Return {"error":"This tool is only for project work."}
+    If ..TaskContext.%Get("kind") '= "study-review" {
+        If '$IsObject(..Route) Return {"error":"Call ChooseRoute first."}
+        If ..Route.action '= "repair" Return {"error":"The selected route does not prepare work."}
+    }
     Set ..Proposal = {}
     Do ..Proposal.%Set("summary",summary)
     Do ..Proposal.%Set("nextAction",nextAction)
     Do ..Proposal.%Set("artifact",artifact)
     Do ..Proposal.%Set("verification",verification)
     Do ..Proposal.%Set("tool","PrepareProject")
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"PrepareProject",..Proposal)
     Return {"prepared":true,"message":"Proposal stored. No code was run, installed or approved."}
 }
 /// Prepare study material with private assessment rubrics.
@@ -74,6 +87,10 @@ Method PrepareLesson(explanation As %String, guidedQuestion As %String, guidedRu
 {
     If ..InspectionCount < 1 Return {"error":"Call InspectTask first."}
     If ..TaskContext.%Get("profile") '= "subject" Return {"error":"This tool is only for study preparation."}
+    If ..TaskContext.%Get("kind") '= "study-review" {
+        If '$IsObject(..Route) Return {"error":"Call ChooseRoute first."}
+        If ..Route.action '= "repair" Return {"error":"The selected route does not prepare work."}
+    }
     Set ..Proposal = {}
     Do ..Proposal.%Set("explanation",explanation)
     Do ..Proposal.%Set("guidedQuestion",guidedQuestion)
@@ -82,6 +99,7 @@ Method PrepareLesson(explanation As %String, guidedQuestion As %String, guidedRu
     Do ..Proposal.%Set("transferRubric",transferRubric)
     Do ..Proposal.%Set("sourceQuote",sourceQuote)
     Do ..Proposal.%Set("tool","PrepareLesson")
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"PrepareLesson",..Proposal)
     Return {"prepared":true,"message":"Lesson prepared. The learner must answer independently."}
 }
 /// Return an explicitly AI-assessed result, never execute project code.
@@ -89,11 +107,30 @@ Method AssessAnswer(passed As %Boolean, feedback As %String) As %DynamicObject
 {
     If ..InspectionCount < 1 Return {"error":"Call InspectTask first."}
     If ..TaskContext.%Get("kind") '= "study-review" Return {"error":"This tool is only for assessment."}
+    If ..TaskContext.%Get("kind") '= "study-review" {
+        If '$IsObject(..Route) Return {"error":"Call ChooseRoute first."}
+        If ..Route.action '= "repair" Return {"error":"The selected route does not prepare work."}
+    }
     Set ..Proposal = {}
     Do ..Proposal.%Set("passed",passed,"boolean")
     Do ..Proposal.%Set("feedback",feedback)
     Do ..Proposal.%Set("tool","AssessAnswer")
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"AssessAnswer",..Proposal)
     Return {"assessed":true}
+}
+
+/// Choose the production branch after inspecting the task. This never completes work.
+Method ChooseRoute(route As %String, reason As %String, hint As %String) As %DynamicObject
+{
+    If ..InspectionCount < 1 Return {"error":"Call InspectTask first."}
+    If (route '= "repair") && (route '= "hint") && (route '= "human") Return {"error":"Choose repair, hint or human."}
+    If reason = "" Return {"error":"Give a concrete reason."}
+    Set ..Route = {}
+    Do ..Route.%Set("action",route)
+    Do ..Route.%Set("reason",reason)
+    Do ..Route.%Set("hint",hint)
+    Do ##class(Finish.Trace.Recorder).Record(..TraceHost,"ChooseRoute",..Route)
+    Return ..Route
 }
 
 }

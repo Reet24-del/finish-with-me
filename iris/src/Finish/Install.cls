@@ -23,4 +23,18 @@ ClassMethod Configure() As %Status
     }
     Return sc
 }
+/// Configure a workflow inbox for an existing local reviewer; no security permissions change.
+ClassMethod ConfigureWorkflow(reviewer As %String = "_SYSTEM") As %Status
+{
+    If '##class(EnsLib.Workflow.RoleDefinition).%ExistsId("Finish.HumanReview") {
+        Set sc = ##class(EnsLib.Workflow.RoleDefinition).CreateRole("Finish.HumanReview")
+        If $$$ISERR(sc) Return sc
+    }
+    If '##class(EnsLib.Workflow.UserDefinition).%ExistsId(reviewer) {
+        Set sc = ##class(EnsLib.Workflow.UserDefinition).CreateUser(reviewer,"Finish With Me reviewer")
+        If $$$ISERR(sc) Return sc
+    }
+    Return ##class(EnsLib.Workflow.RoleDefinition).AddUserToRole("Finish.HumanReview",reviewer)
+}
+
 }

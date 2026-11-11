@@ -19,7 +19,7 @@ export function seedTasks() {
 }
 export function invalidate(task) {
   if(isGeneral(task)&&task.kind==='coding'&&task.proposal?.artifact){task.attempts.push({at:new Date().toISOString(),artifact:task.proposal.artifact,verification:task.verificationNotes||'',outcome:task.verificationStatus||'not-verified'});task.attempts=task.attempts.slice(-8);}
-  delete task.proposal; delete task.checks; delete task.baseline; delete task.study; delete task.evidence; delete task.approvalToken;
+  delete task.routing; delete task.proposal; delete task.checks; delete task.baseline; delete task.study; delete task.evidence; delete task.approvalToken;
   task.stage='understand';task.status='active';task.revision++;
 }
 export function localInvestigate(task) {
@@ -35,15 +35,15 @@ export function localInvestigate(task) {
   }
   task.stage='prepare';task.revision++;event(task,task.kind==='study'?'Prepared a guided equation exercise.':'Checked the original function and prepared a candidate.');
 }
-export function runChecks(task) {
+export function runChecks(task,nativeResult=null) {
   if(isGeneral(task))throw Error('Run the proposed checks in your project, then record their results.');
   if (task.kind !== 'coding' || !task.proposal?.code) throw Error('Investigate the coding task before checking it.');
   if (task.proposal.sourceHash !== hash(task.source)) throw Error('Source changed. Investigate again.');
-  task.checks=checkTotal(task.proposal.code);
+  task.checks=nativeResult?nativeResult.checks:checkTotal(task.proposal.code);
   task.attempts.push({at:new Date().toISOString(),hash:hash(task.proposal.code),checks:task.checks});
   if (task.checks.every(c=>c.passed)) {
     task.stage='review';task.approvalToken=randomUUID();
-    task.evidence={hash:hash(task.proposal.code),count:task.checks.length,checkedAt:new Date().toISOString()};
+    task.evidence={engine:nativeResult?.provider||'Local bounded JavaScript interpreter',hash:hash(task.proposal.code),count:task.checks.length,checkedAt:new Date().toISOString()};
     event(task,`${task.checks.length} contract checks passed. Ready for your review.`,'success');
   } else {task.stage='check';delete task.approvalToken;delete task.evidence;event(task,'The candidate did not pass. Keep the task open and revise it.','warning');}
   task.revision++;
