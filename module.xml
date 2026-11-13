@@ -7,8 +7,10 @@
       <Packaging>module</Packaging>
       <Description>IRIS decision production: CompletionAgent routing, Embedded Python gate, Workflow review, trace recorder, and GitHub inbound adapter.</Description>
       <License>MIT</License>
+      <SystemRequirements Version=">=2026.3" Interoperability="enabled"/>
       <SourcesRoot>iris/src</SourcesRoot>
       <Resource Name="Finish.PKG" Directory="iris/src"/>
+      <FileCopy Name="iris/gate/" Target="${mgrDir}finish-with-me/gate/" Overlay="true"/>
     </Module>
   </Document>
 </Export>

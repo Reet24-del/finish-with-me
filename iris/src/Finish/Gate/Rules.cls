@@ -1,6 +1,8 @@
 Include Ensemble
 
 /// Embedded Python entry point for iris/gate/engine.py.
+/// IPM Activate copies that directory to the manager directory finish-with-me/gate/.
+/// scripts/setup-iris.sh copies engine.py to /durable/finish/gate_engine.py.
 Class Finish.Gate.Rules Extends %RegisteredObject
 {
 
@@ -11,11 +13,32 @@ ClassMethod Run(payload As %String(MAXLEN = 220000)) As %DynamicObject [ Languag
 
     import iris
 
-    path = os.environ.get("FINISH_GATE_FILE") or "/durable/finish/gate_engine.py"
+    path = os.environ.get("FINISH_GATE_FILE")
+    if not path:
+        durable = "/durable/finish/gate_engine.py"
+        packaged = ""
+        try:
+            manager = iris.cls("%Library.File").ManagerDirectory()
+            packaged = os.path.join(str(manager), "finish-with-me", "gate", "engine.py")
+        except Exception:
+            packaged = ""
+        if os.path.isfile(durable):
+            path = durable
+        elif packaged and os.path.isfile(packaged):
+            path = packaged
+        else:
+            path = durable
     import importlib.util
+    if not os.path.isfile(path):
+        raise RuntimeError(
+            "The IRIS completion gate is not installed at " + path
+            + ". An IPM install copies iris/gate/engine.py to <mgr>/finish-with-me/gate/engine.py."
+            + " scripts/setup-iris.sh copies it to /durable/finish/gate_engine.py."
+            + " Set FINISH_GATE_FILE to use another file."
+        )
     spec = importlib.util.spec_from_file_location("finish_gate_engine", path)
     if spec is None or spec.loader is None:
-        raise RuntimeError("The IRIS completion gate is not installed at " + path + ". Run scripts/setup-iris.sh.")
+        raise RuntimeError("The IRIS completion gate could not be loaded from " + path + ".")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     decided = module.decide(json.loads(payload))

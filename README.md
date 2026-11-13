@@ -118,7 +118,7 @@ For the original examples without IRIS, the restricted JavaScript AST interprete
 - `src/` — React interface.
 - `server/` — local HTTP API, durable task store, IRIS client, and bounded code checker.
 - `iris/src/Finish/` — REST dispatcher, decision service and process, AI Hub operation, Embedded Python gate, workflow operations, and production.
-- `iris/gate/engine.py` — deterministic gate loaded by `Finish.Gate.Rules` at `/durable/finish/gate_engine.py`.
+- `iris/gate/engine.py` — deterministic gate. `scripts/setup-iris.sh` copies it to `/durable/finish/gate_engine.py`. An IPM install copies `iris/gate/` to `<mgr>/finish-with-me/gate/`. `Finish.Gate.Rules` uses the durable file when it is present, otherwise the IPM copy.
 - `docker-compose.yml` — local IRIS and application services.
 
 ## Configuration and privacy
@@ -184,7 +184,15 @@ Earlier live notes for routing, the AST checker, and the original Docker repair 
 
 ### IPM package
 
-`module.xml` packages the classes under `iris/src` as `finish-with-me-iris` version 0.3.0. The gate file `iris/gate/engine.py` is copied by `scripts/setup-iris.sh`; an IPM load alone does not install that file or start the production. Public registry publication is not claimed. An earlier local IPM load is recorded with the pre-combination classes and was not repeated for this revision.
+`module.xml` defines `finish-with-me-iris` version 0.3.0. It requires IRIS `>=2026.3` in an Interoperability-enabled namespace, loads `Finish.PKG` from `iris/src`, and on Activate copies `iris/gate/engine.py` and `iris/gate/test_engine.py` to `<mgr>/finish-with-me/gate/`. It does not set a provider key, create the REST application, add workflow users, or start `Finish.Production`. `scripts/setup-iris.sh` still does that for the local Docker instance, and it still copies `engine.py` to `/durable/finish/gate_engine.py`. It does not copy `test_engine.py`; run that file from the repository with `python3 -m unittest test_engine.py`.
+
+After this manifest is on the public default branch, a checkout can be loaded with `zpm "load /path/to/finish-with-me -v"`, and IPM can load the public repository with `zpm "install https://github.com/Reet24-del/finish-with-me"`. Neither command was run for this revision. The contest install command is the registry name:
+
+```objectscript
+zpm "install finish-with-me-iris"
+```
+
+That command installs from the public IPM registry. This package is not published there. The owner steps and the checks to run on AI Hub build 154 are in [docs/ipm.md](docs/ipm.md). An earlier local IPM load covered the pre-combination classes only. This revision was not loaded on IRIS.
 
 ## Contest bonuses
 
@@ -198,7 +206,7 @@ These match what is in the repository. Points are not claimed as awarded. Rules:
 | Custom adapter | 2 | [GitHub inbound adapter](iris/src/Finish/Adapter/GitHubInbound.cls) and [service](iris/src/Finish/Adapter/GitHubService.cls). The service now submits `Finish.Message.WorkItem` to the decision process. |
 | Embedded Python | 3 | The completion gate (`Finish.Gate.Rules` plus `iris/gate/engine.py`) and the AST checker (`Finish.Check.Receipt`). |
 | Community idea DPI-I-689 | 4 | Agent prompt, model, route, tokens, latency, gate outcome, and workflow task are interoperability messages in one session. |
-| IPM / ZPM | 2 | [Manifest](module.xml) packages `iris/src`. Registry install is not claimed, and this revision was not loaded with IPM. |
+| IPM / ZPM | 2 | [Manifest](module.xml) is `finish-with-me-iris` 0.3.0, requires IRIS `>=2026.3` with Interoperability, and packages `iris/src` plus `iris/gate`. Contest command: `zpm "install finish-with-me-iris"`. Not on the public registry. Publish steps: [docs/ipm.md](docs/ipm.md). This revision was not loaded on IRIS. |
 | Online demo | 2 | [Public site](https://finish-with-me.onrender.com/) is hosted Groq or local examples, not this IRIS production. |
 
 The questionnaire and the two Developer Community articles are drafts in `docs/` and are not submitted or published, so they are not listed as implemented bonuses. No PEX, Vector Search, or vendor-bug claim is made. The [bonus comment draft](docs/bonus-claim-draft.md) has not been posted.
