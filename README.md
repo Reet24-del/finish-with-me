@@ -1,8 +1,8 @@
 # Finish With Me
 
-**A small-step completion coach for the work you keep getting stuck on.** It helps with one concrete piece of a coding project or study session, does useful work alongside you, and only closes the task when there is evidence of a result.
+An IRIS Interoperability production routes a stuck work item to an AI Hub agent; the agent proposes a bounded action; a deterministic IRIS gate and a Workflow Engine human approval decide completion.
 
-This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). The app uses an InterSystems IRIS Interoperability production to route a task to an IRIS AI Hub agent. Native AI Hub tools inspect the task and choose repair, hint or human review. Human escalations enter the native Workflow Engine; preparation tools never execute or approve the work. For coding, the agent proposes a bounded repair; a separate, sandboxed checker runs the agreed cases, and the user approves the result before it replaces the saved function. Study sessions guide the learner through a step and require an independent transfer question before completion.
+This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). A work item enters `Finish.Production` as `Finish.Message.WorkItem`. `Finish.DecisionProcess` calls `Finish.Agent.CompletionAgent`, which chooses repair, hint, or human review. A repair is then judged by an Embedded Python gate. Passing evidence opens `Finish.Reviewer`; a repeated failure opens `Finish.Supervisor`; a human route opens `Finish.HumanReview`. The Node app stores the task and renders that decision. Approve and send-back call the production when the task is IRIS-owned. Hint and human review do not complete the task. Receipt-total and linear-equation examples still run locally without IRIS. Hosted Groq is a separate path and does not run this production.
 
 [Download the demo MP4](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4) · [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
 
@@ -72,31 +72,53 @@ The contest organizers confirmed that build `2027.1.0AI.109.0` may be used as th
    docker compose up --build -d app
    ```
 
-6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. Project investigations, study preparation and answer assessments route through `Finish.Production` to `Finish.AgentOperation` and then Groq. This health label confirms connectivity, not the quality of any proposed repair.
+6. Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the authenticated REST health endpoint responds. Investigations, checks, recorded verification, study assessment, and approve/send-back then go through `Finish.DecisionService` → `Finish.DecisionProcess`. This health label confirms connectivity, not the quality of any proposed repair.
 
 The app defaults to Groq: set `AIHUB_PROVIDER=groq`, `GROQ_API_KEY`, and `AIHUB_MODEL=openai/gpt-oss-120b` in `.env`. AI Hub uses its OpenAI-compatible provider with `base_url=https://api.groq.com/openai/v1`; tool execution remains inside IRIS. For OpenAI instead, set `AIHUB_PROVIDER=openai`, `OPENAI_API_KEY`, and `AIHUB_MODEL=gpt-4.1-mini`. The selected key is read from the local `.env` by Docker Compose and is never sent to the browser or stored with task data. Judges should use their own provider key.
 
-## Workflow
+## Architecture
 
 ```text
-Your files / notes → app API → authenticated IRIS REST
-                              → Interoperability production
-                              → native AI Hub agent → InspectTask
-                                 ├ PrepareProject → replacement + user-run checks
-                                 ├ PrepareLesson → explanation + private rubrics
-                                 └ AssessAnswer → AI feedback + accepted/retry
-Evidence → explicit user approval → saved completion record
+Browser or Finish.GitHubIssues
+  → WorkItem
+    → Finish.DecisionService or Finish.GitHubIssues
+      → Finish.DecisionProcess
+          → Finish.AgentOperation     CompletionAgent: InspectTask, ChooseRoute, then one prepare tool
+          → Finish.TraceOperation     one message per decision step and tool call
+          → Finish.GateOperation      Embedded Python gate (iris/gate/engine.py)
+          → Finish.Reviewer           approval after the gate passes
+            Finish.Supervisor         repeated failure or a message with no failure signature
+            Finish.HumanReview        the agent chose human
+      ← Decision
+Finish.CheckOperation               AST receipt checks for a candidate that is not yet owned by a decision
 ```
 
-The agent has no completion or code-execution tool. General project proposals never modify repository files automatically. The user runs relevant checks and supplies verification results. General study assessment is a separate AI Hub request that receives the stored question, private rubric, source and learner answer. Only the active question is sent to the browser; private rubrics are stripped from every task response. Generated questions may still be imperfect—review them against the source and use **Rework with this context** when needed.
+| Outcome | Meaning |
+| --- | --- |
+| needs-evidence | The proposal is stored, or the checks failed. The work item stays open. |
+| pending-approval | The gate passed. `Finish.Reviewer` has an Approve/Reject workflow task. |
+| escalate | Repeated failure, a stuck message with no failure signature (`Finish.Supervisor`), or the agent chose human review (`Finish.HumanReview`). |
+| reject | The proposal or the evidence is not acceptable, or the reviewer sent it back. |
+| complete | The reviewer approved and the gate still accepts the same evidence. |
 
-For the original examples, the restricted JavaScript AST interpreter checks eight receipt-total cases, and deterministic arithmetic validates the equation exercise.
+Visual Trace shows one session per production call. A proposal session is service → process → agent → gate, and a workflow operation when the gate asks for a person. The later approve or send-back session is service → process → gate recheck → workflow completion. Message descriptions name each step.
+
+`Finish.Message.AgentCall` carries the prompt, prompt version `finish-decision-1`, target tool, and task payload. `Finish.Message.AgentResult` carries the model, reply, route, tool trace, proposal, input tokens, output tokens, and latency. `Finish.Trace.Recorder` also sends `AgentStart`, each tool call, `AgentResult` or `AgentError`, `DecisionStart`, `GateResult`, and `WorkflowOpened` to `Finish.TraceOperation` in the same session. `Finish.Message.GateResult` carries the outcome, reason, and, for the receipt example, the eight check rows.
+
+To inspect a run, sign in to the Management Portal as `_SYSTEM` with the password from `.env`, switch to the `USER` namespace, and open Interoperability → View → Messages for `Finish.Production`. Open the session and choose Visual Trace. The same user's workflow inbox is Interoperability → Manage → Workflow → Workflow Inbox. `scripts/setup-iris.sh` adds `_SYSTEM` to `Finish.Reviewer`, `Finish.Supervisor`, and `Finish.HumanReview`.
+
+`Finish.GitHubIssues` polls at most ten open issues with the configured label, skips pull requests, and sends each new or updated issue into `Finish.DecisionProcess` as a project work item. It does not fetch repository files or change GitHub. The private local workspace can import the recorded snapshots. Hosted visitor workspaces cannot. Set **Repository**, **Label** (default `stuck`), and **CallInterval** on the business service.
+
+The agent has no completion or code-execution tool. General project proposals never modify repository files automatically. The user runs relevant checks and supplies verification results; the IRIS gate accepts or rejects that evidence and, when it passes, waits for the workflow task. General study assessment is a separate AI Hub request that receives the stored question, private rubric, source and learner answer. Only the active question is sent to the browser; private rubrics are stripped from every task response. Generated questions may still be imperfect—review them against the source and use **Rework with this context** when needed.
+
+For the original examples without IRIS, the restricted JavaScript AST interpreter checks eight receipt-total cases, and deterministic arithmetic validates the equation exercise. With IRIS connected, the receipt-total investigate still uses the agent, and the eight checks run inside the Embedded Python gate. The seeded **Example: Stuck transform** is an interoperability failure: the agent proposes a repair with `PrepareRepair`, and the gate requires a recorded replay before workflow approval. Three failed verifications escalate to `Finish.Supervisor`.
 
 ## Project layout
 
 - `src/` — React interface.
 - `server/` — local HTTP API, durable task store, IRIS client, and bounded code checker.
-- `iris/src/Finish/` — IRIS REST dispatcher, AI Hub agent/tool, interoperability messages, and production.
+- `iris/src/Finish/` — REST dispatcher, decision service and process, AI Hub operation, Embedded Python gate, workflow operations, and production.
+- `iris/gate/engine.py` — deterministic gate loaded by `Finish.Gate.Rules` at `/durable/finish/gate_engine.py`.
 - `docker-compose.yml` — local IRIS and application services.
 
 ## Configuration and privacy
@@ -124,7 +146,7 @@ MIT. See [LICENSE](LICENSE).
 
 ## Implementation scope and verification
 
-New tasks use `project` and `subject` profiles. Source/notes are provided as pasted text or text-file selections (combined context up to 32,000 characters). Binary PDFs, repository cloning, autonomous file changes, execution of arbitrary project code and whole-project completion are not implemented. The `receipt-total` and `linear-equations` profiles remain as fixed examples. General project work, lesson generation and answer assessment all use native IRIS AI Hub tools.
+New tasks use `project` and `subject` profiles. The seeded `integration` profile is a failed transform. Source/notes are provided as pasted text or text-file selections (combined context up to 32,000 characters). Binary PDFs, repository cloning, autonomous file changes, execution of arbitrary project code and whole-project completion are not implemented. The `receipt-total` and `linear-equations` profiles remain as fixed examples and still complete locally without IRIS. With IRIS connected, receipt-total checks and every approve/send-back for an IRIS-owned task are decided by the production.
 
 The broader workflows were verified with a Python pagination task (four checks executed outside the application) and a biology session that rejected an instruction-only response and an incorrect transfer answer. Both completed through the API with explicit approval; see [docs/general-verification.json](docs/general-verification.json). These are synthetic scenario checks, not a guarantee of model accuracy across all subjects or projects.
 
@@ -134,99 +156,49 @@ Full Docker verification on build `2027.1.0AI.109.0` succeeded using Groq `opena
 
 Groq compatibility is implemented using the AI Hub provider `base_url` setting and Groq’s documented OpenAI-compatible endpoint. Run `node scripts/verify-live.mjs` to repeat the synthetic live scenario with your own key; it permits up to three checked proposals and records the actual outcome. For a host-run app, set `IRIS_BASE_URL=http://127.0.0.1:52773/csp/user/finish/` in `.env`.
 
-To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result.
+To verify the full running Docker stack, run `node scripts/verify-docker.mjs`. It creates a labeled synthetic task in the workspace and records the actual result. When the task is IRIS-owned, investigate, the receipt decision, and approval go through `Finish.DecisionProcess`.
 
+`python3 -m unittest test_engine.py` in `iris/gate` covers the deterministic gate, including repair, hint, and human routes. `npm test` covers local completion, hosted Groq tool shape, workspace recovery, and the rule that the Node client does not mark a task complete unless the production outcome is `complete`. Those tests do not start IRIS. `scripts/setup-iris.sh` compiles the classes, configures the REST app and the three workflow roles, runs `Finish.Gate.Rules.SmokeTest()` inside the container, and starts the production. That step needs the local AI Hub image and was not run for this combined revision.
 
-## Native interoperability workflow (0.3)
+## Combined production
 
-`Finish.AgentOperation` now requires the native agent to call `InspectTask` and
-`ChooseRoute`. Repair prepares work; hint returns one nudge without grading or
-completion; human sends an `EnsLib.Workflow.TaskRequest` to `Finish.HumanReview`.
-A human task being queued is not human approval. The task stays open and needs
-fresh evidence before completion.
+`Finish.Agent.CompletionAgent` calls `InspectTask`, then `ChooseRoute` (`repair`, `hint`, or `human`). Repair may call `PrepareProject`, `PrepareRepair`, `PrepareLesson`, or `PrepareCandidate`. Study assessment skips routing and calls `AssessAnswer`. Hint keeps the task open. Human review opens `Finish.HumanReview` and is not completion. The gate then routes repair evidence to `Finish.Reviewer` or, after repeated failure, `Finish.Supervisor`.
 
-Each agent run emits native child messages to `Finish.TraceOperation`: start,
-actual inspection/routing/preparation tool data, result or error. The result
-includes the model, prompt version, duration and AI Hub token statistics. The
-[synthetic routing report](docs/routing-verification.json) records the three live
-routes and actual native Workflow inbox evidence.
+`Finish.Trace.Recorder` writes those steps into the same Visual Trace session. Token counts and duration are the agent session statistics, not a separate log of every provider HTTP call. Hosted Groq does not produce these native traces.
 
-The receipt checker uses `Finish.CheckOperation` → `Finish.Check.Receipt` in
-Embedded Python in native mode. It interprets only the bounded JavaScript AST;
-submitted code is never evaluated, imported or run as host code. The original
-JavaScript checker remains for disconnected examples and hosted Groq mode.
-Run `node scripts/verify-native-checker.mjs` with a private local `.env` to compare
-valid, buggy and unsupported candidates against the native checker.
+`Finish.Check.Receipt` remains the Embedded Python AST checker behind `POST /check`. The decision gate in `iris/gate/engine.py` runs the receipt cases when an IRIS-owned candidate is checked. Disconnected examples and hosted Groq still use the JavaScript interpreter.
 
-`Finish.GitHubIssues` is a custom inbound adapter/service. In Production Settings,
-set **Repository**, **Label** (default `stuck`) and **CallInterval**. It polls at
-most ten open issues per pass, excludes pull requests and deduplicates by issue
-number/update timestamp. It does not fetch repository files or modify GitHub.
-The private native workspace has **Import stuck GitHub issues** to bring its
-recorded issues into the app. Shared hosted visitor workspaces cannot import
-this private native feed. The supplied [fixture](test/fixtures/github-issues.json)
-is synthetic and creates no GitHub issue; ingestion, PR exclusion and duplicate
-suppression were verified through the actual adapter.
+`Finish.GitHubIssues` feeds each stuck issue to `Finish.DecisionProcess`. The adapter still excludes pull requests and skips an issue whose update timestamp was already seen. The supplied [fixture](test/fixtures/github-issues.json) is synthetic. Earlier adapter checks are in [docs/interop-app-verification.json](docs/interop-app-verification.json); they predate sending the issue through the decision process, so they are not a live test of this combined path.
 
-### Reproduce DPI-I-689 in Visual Trace
+Earlier live notes for routing, the AST checker, and the original Docker repair are in [docs/routing-verification.json](docs/routing-verification.json), [docs/embedded-python-verification.json](docs/embedded-python-verification.json), and [docs/docker-verification.json](docs/docker-verification.json). They describe runs from before this decision process, trace recorder, and GitHub service were wired together. This combined revision was not executed against a running IRIS instance.
 
-1. Run the native Docker setup and `sh scripts/setup-iris.sh` with your own key.
-2. Create a project with enough source to repair; ask for a hint on a separate
-   study task; create a third task that needs an authorized maintainer without
-   access to repository files. The native agent selects the route in each case.
-3. Open Management Portal → Interoperability → View → Messages, locate the
-   investigation and open **Visual Trace**. Match its session ID to the returned
-   `traceSessionId`; expand the child events sent to `Finish.TraceOperation`.
-4. Inspect `AgentResult` for model, prompt version, token statistics and duration;
-   follow `ChooseRoute` and preparation events. The recorded repair/hint/human
-   runs used sessions 77, 89 and 99 on the test instance. IDs will differ on yours.
-5. For human routing, inspect `Finish.HumanReview` in the native Workflow Portal.
-   The existing local reviewer is added to that workflow role by setup; no
-   security password/role permissions are added for this inbox configuration.
+### See a decision in Visual Trace
 
-[Community idea DPI-I-689](https://ideas.intersystems.com/ideas/DPI-I-689) asks for
-Interoperability-based LLM pipeline traceability. Here, Visual Trace links agent
-and tool events to the actual production and human-review messages. Compared
-with Langfuse this is a focused local workflow trace, not a replacement for its
-full LLM observability, evaluation or hosted analytics features. Traces cover each agent.Chat invocation and its tools; token/timing metadata are
-aggregated session statistics, not separate HTTP wire logs for every provider
-round trip. Native traces are not produced by the separately labeled hosted
-Groq path.
+1. Run the Docker setup and `sh scripts/setup-iris.sh` with your own provider key.
+2. Ask IRIS to work a project, a hint-sized study question, and a task that lacks the files a repair would need.
+3. Open Management Portal → Interoperability → View → Messages, find the session, and open Visual Trace.
+4. Read `AgentCall` / `AgentResult` for the prompt, model, route, tokens, and latency, then the child messages on `Finish.TraceOperation`, then `GateResult`.
+5. For a human route, open the `Finish.HumanReview` task in the Workflow Inbox. For a passing gate, open `Finish.Reviewer`.
+
+[Community idea DPI-I-689](https://ideas.intersystems.com/ideas/DPI-I-689) asks for interoperability traceability of LLM calls. This production keeps the agent call, gate, and workflow task in one session. It is not a Langfuse replacement, and it does not use Vector Search.
 
 ### IPM package
 
-`module.xml` packages the native classes as `finish-with-me-iris` version 0.3.0.
-With IPM installed, load the checked-out source in an AI Hub-enabled,
-Interoperability-enabled namespace:
-
-```objectscript
-zpm "load /path/to/finish-with-me -v"
-```
-
-Local IPM 0.10.10 load, validation, compilation and activation passed. This
-installs classes only; follow the native setup instructions to configure your
-private provider settings, authenticated REST app and reviewer inbox. Public
-IPM registry publication is pending; `zpm "install finish-with-me-iris"` is not
-claimed to work from the public registry yet. No vendor image, private key or
-task data is packaged.
+`module.xml` packages the classes under `iris/src` as `finish-with-me-iris` version 0.3.0. The gate file `iris/gate/engine.py` is copied by `scripts/setup-iris.sh`; an IPM load alone does not install that file or start the production. Public registry publication is not claimed. An earlier local IPM load is recorded with the pre-combination classes and was not repeated for this revision.
 
 ## Contest bonuses
 
-These are evidence-backed requests for organizer review, not awarded points.
-Rules: [official bonus announcement](https://community.intersystems.com/post/technology-bonuses-intersystems-programming-contest-ai-agents-interoperability-workflows).
+These match what is in the repository. Points are not claimed as awarded. Rules: [official bonus announcement](https://community.intersystems.com/post/technology-bonuses-intersystems-programming-contest-ai-agents-interoperability-workflows).
 
-| Bonus | Published points | Evidence and status |
+| Bonus | Published points | What is implemented |
 | --- | ---: | --- |
-| Docker | 2 | [Compose](docker-compose.yml), [native Docker verification](docs/docker-verification.json). Native IRIS runs in Docker. |
-| Downloadable video | 3 | [MP4, no registration](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4). Original 9 November video; predates the new routes. |
-| Workflow Engine | 2 | [Native escalation](iris/src/Finish/Agent/CompletionOperation.cls), [live routing and native inbox evidence](docs/routing-verification.json). Incomplete task created; no automatic approval. |
-| Custom adapter | 2 | [GitHub inbound adapter](iris/src/Finish/Adapter/GitHubInbound.cls), [service](iris/src/Finish/Adapter/GitHubService.cls), [app verification](docs/interop-app-verification.json). Live empty-feed poll and synthetic ingestion/PR exclusion/deduplication verified. |
-| Embedded Python | 3 | [Bounded checker](iris/src/Finish/Check/Receipt.cls), [production operation](iris/src/Finish/Check/Operation.cls), [verification](docs/embedded-python-verification.json). |
-| Community idea DPI-I-689 | 4 | [Idea](https://ideas.intersystems.com/ideas/DPI-I-689), [native trace recorder](iris/src/Finish/Trace/Recorder.cls), [reproduction instructions above](#reproduce-dpi-i-689-in-visual-trace). Open Exchange dedicated idea-field update still pending. |
-| IPM / ZPM | 2 | [Manifest](module.xml); local installation verified. Registry publication pending; not claimed complete. |
-| Questionnaire | 1 | [Project-backed draft](docs/questionnaire-draft.md); not submitted. |
-| First and second DC articles | 2 + 1 | [Build article draft](docs/articles/01-building-finish-with-me.md), [reproduction article draft](docs/articles/02-reproducing-native-workflow.md); not published. |
-| Online demo | 2 | [Public site](https://finish-with-me.onrender.com/). Separately hosted mode; no claim of a public native IRIS workflow. Awaiting organizer eligibility review. |
+| Docker | 2 | [Compose](docker-compose.yml) runs IRIS and the app. The earlier [Docker note](docs/docker-verification.json) is from before this combined production. |
+| Video | 3 | [MP4](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4) and the [YouTube walkthrough](https://www.youtube.com/watch?v=aBBQBlfhaA8). Both predate the decision process. |
+| Workflow Engine | 2 | `Finish.Reviewer`, `Finish.Supervisor`, and `Finish.HumanReview` are workflow operations. A queued task is not completion. |
+| Custom adapter | 2 | [GitHub inbound adapter](iris/src/Finish/Adapter/GitHubInbound.cls) and [service](iris/src/Finish/Adapter/GitHubService.cls). The service now submits `Finish.Message.WorkItem` to the decision process. |
+| Embedded Python | 3 | The completion gate (`Finish.Gate.Rules` plus `iris/gate/engine.py`) and the AST checker (`Finish.Check.Receipt`). |
+| Community idea DPI-I-689 | 4 | Agent prompt, model, route, tokens, latency, gate outcome, and workflow task are interoperability messages in one session. |
+| IPM / ZPM | 2 | [Manifest](module.xml) packages `iris/src`. Registry install is not claimed, and this revision was not loaded with IPM. |
+| Online demo | 2 | [Public site](https://finish-with-me.onrender.com/) is hosted Groq or local examples, not this IRIS production. |
 
-The [bonus comment](docs/bonus-claim-draft.md) is prepared but has not been posted.
-No vendor-bug, PEX, Vector Search or guaranteed prize claim is made.
+The questionnaire and the two Developer Community articles are drafts in `docs/` and are not submitted or published, so they are not listed as implemented bonuses. No PEX, Vector Search, or vendor-bug claim is made. The [bonus comment draft](docs/bonus-claim-draft.md) has not been posted.

@@ -20,6 +20,7 @@ services:
       AIHUB_MODEL: ${AIHUB_MODEL:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      FINISH_GATE_FILE: /durable/finish/gate_engine.py
     ports:
       - "127.0.0.1:52773:52773"
       - "127.0.0.1:1972:1972"

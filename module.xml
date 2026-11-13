@@ -5,7 +5,7 @@
       <Name>finish-with-me-iris</Name>
       <Version>0.3.0</Version>
       <Packaging>module</Packaging>
-      <Description>Native AI Hub completion routing, Visual Trace, human Workflow, GitHub inbound adapter and bounded Embedded Python checker.</Description>
+      <Description>IRIS decision production: CompletionAgent routing, Embedded Python gate, Workflow review, trace recorder, and GitHub inbound adapter.</Description>
       <License>MIT</License>
       <SourcesRoot>iris/src</SourcesRoot>
       <Resource Name="Finish.PKG" Directory="iris/src"/>

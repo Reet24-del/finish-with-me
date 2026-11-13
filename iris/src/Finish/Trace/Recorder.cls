@@ -1,7 +1,7 @@
 Include %occStatus
 Class Finish.Trace.Recorder Extends %RegisteredObject
 {
-ClassMethod Record(host As Ens.BusinessOperation, name As %String, data As %DynamicObject) As %Status
+ClassMethod Record(host As %RegisteredObject, name As %String, data As %DynamicObject) As %Status
 {
     If '$IsObject(host) Return $$$OK
     Set request = ##class(Finish.Message.TraceEvent).%New()
