@@ -1,6 +1,6 @@
 # Submission preparation
 
-Status: full Docker app + authenticated IRIS REST + production + Groq GPT-OSS verified. Both InspectTask and PrepareCandidate were called; the candidate passed all 8 independent checks before approval. Completion persisted after an app-container restart, and frontend/JS requests returned HTTP 200. Public repository published at https://github.com/Reet24-del/finish-with-me. Open Exchange version 1.0.0 sent for approval at https://openexchange.intersystems.com/portal/products/Finish-With-Me/edit after explicit user acceptance of the contest terms. The portal shows Pending approval, with Submit to Contest checked. Organizer approval and public contest listing remain pending.
+Status: the combined decision production is on main at https://github.com/Reet24-del/finish-with-me. This combined path has not been executed against a running IRIS instance; earlier JSON notes under `docs/` describe runs from before the pieces were joined. Public repository published. Open Exchange version 1.0.0 sent for approval at https://openexchange.intersystems.com/portal/products/Finish-With-Me/edit after explicit user acceptance of the contest terms. The portal shows Pending approval, with Submit to Contest checked. Organizer approval of later listing updates, including Publish in Package Manager, remains pending.
 
 ## Name
 Finish With Me

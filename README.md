@@ -4,7 +4,7 @@ An IRIS Interoperability production routes a stuck work item to an AI Hub agent;
 
 This is an entry for the [InterSystems Programming Contest: AI Agents in Interoperability Workflows](https://openexchange.intersystems.com/contest/49). A work item enters `Finish.Production` as `Finish.Message.WorkItem`. `Finish.DecisionProcess` calls `Finish.Agent.CompletionAgent`, which chooses repair, hint, or human review. A repair is then judged by an Embedded Python gate. Passing evidence opens `Finish.Reviewer`; a repeated failure opens `Finish.Supervisor`; a human route opens `Finish.HumanReview`. The Node app stores the task and renders that decision. Approve and send-back call the production when the task is IRIS-owned. Hint and human review do not complete the task. Receipt-total and linear-equation examples still run locally without IRIS. Hosted Groq is a separate path and does not run this production.
 
-[Download the demo MP4](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4) · [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — actual interface, live IRIS repair, independent checks, and study interaction.
+[Download the demo MP4](https://github.com/Reet24-del/finish-with-me/releases/download/media-v1/Finish-With-Me-Demo.mp4) · [Watch the demo video](https://www.youtube.com/watch?v=aBBQBlfhaA8) — earlier receipt-total and algebra walkthrough; both predate the combined decision process.
 
 [Open the hosted website](https://finish-with-me.onrender.com/) — multipage demo with isolated visitor workspaces. The website labels its active provider and storage mode. Optional free Groq hosting is separate from the native IRIS workflow; durable cloud storage requires a configured external database.
 
