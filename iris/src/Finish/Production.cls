@@ -4,11 +4,14 @@ Class Finish.Production Extends Ens.Production
 XData ProductionDefinition
 {
 <Production Name="Finish.Production" LogGeneralTraceEvents="true">
-  <Description>A stuck work item is routed to an AI Hub agent, then a deterministic gate and the Workflow Engine decide completion.</Description>
+  <Description>A stuck work item is matched to similar finished blockers, routed to an AI Hub agent, then a deterministic gate and the Workflow Engine decide completion.</Description>
   <Item Name="Finish.DecisionService" Category="service" ClassName="Finish.Service.DecisionService" PoolSize="0" Enabled="true" Foreground="false">
     <Setting Target="Host" Name="LogTraceEvents">true</Setting>
   </Item>
   <Item Name="Finish.DecisionProcess" Category="process" ClassName="Finish.Process.DecisionProcess" PoolSize="1" Enabled="true" Foreground="false">
+    <Setting Target="Host" Name="LogTraceEvents">true</Setting>
+  </Item>
+  <Item Name="Finish.MemoryOperation" Category="memory" ClassName="Finish.Memory.Operation" PoolSize="1" Enabled="true" Foreground="false">
     <Setting Target="Host" Name="LogTraceEvents">true</Setting>
   </Item>
   <Item Name="Finish.AgentOperation" Category="operation" ClassName="Finish.Agent.CompletionOperation" PoolSize="1" Enabled="true" Foreground="false">

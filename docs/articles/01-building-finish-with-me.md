@@ -12,7 +12,7 @@ This draft describes the decision production now on main. It does not claim that
 
 A `Finish.Message.WorkItem` enters `Finish.Production` in one of two ways. The Node app, or a manual client, posts it to `POST /csp/user/finish/decide`. Or `Finish.GitHubIssues` polls open issues through the custom adapter `Finish.Adapter.GitHubInbound` and sends the issue straight into `Finish.DecisionProcess`. The REST path goes through `Finish.DecisionService` first; the GitHub service calls the process directly. Neither path calls `Finish.AgentOperation` from REST.
 
-`Finish.DecisionProcess` calls `Finish.AgentOperation` (`Finish.Agent.CompletionOperation`), which runs `Finish.Agent.CompletionAgent`. The agent has to call `InspectTask` first. That tool returns the task plus a completion contract for its profile. Then, except for study assessment, it calls `ChooseRoute` with one of three routes:
+`Finish.DecisionProcess` asks `Finish.MemoryOperation` for similar finished blockers, then calls `Finish.AgentOperation` (`Finish.Agent.CompletionOperation`), which runs `Finish.Agent.CompletionAgent`. The lookup uses `VECTOR_COSINE` on a lexical hash. It has not been executed on a live IRIS instance. The agent has to call `InspectTask` first. That tool returns the task plus a completion contract for its profile. Then, except for study assessment, it calls `ChooseRoute` with one of three routes:
 
 - `repair`: prepare one source-grounded file replacement, a stuck-message repair, or a lesson with private grading rubrics, using `PrepareProject`, `PrepareRepair`, `PrepareLesson`, or `PrepareCandidate` for the receipt example;
 - `hint`: give one nudge and leave the task open;
