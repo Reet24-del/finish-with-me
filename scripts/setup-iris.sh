@@ -63,3 +63,11 @@ IRIS
 then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_PRODUCTION_OK' "$setup_output" || exit 1
+if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
+Set sc = ##class(Finish.Workflow.HumanApproval).SmokeChecks()
+If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) }
+Halt
+IRIS
+then cat "$setup_output"; exit 1; fi
+cat "$setup_output"
+grep -q '^FINISH_WORKFLOW_CHECKS_OK' "$setup_output" || exit 1
