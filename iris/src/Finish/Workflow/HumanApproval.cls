@@ -4,6 +4,17 @@ Include Ensemble
 Class Finish.Workflow.HumanApproval Extends EnsLib.Workflow.Operation
 {
 
+/// EnsLib.Workflow.Operation maps TaskRequest to its deferred TaskHandler, which never replies
+/// until the task is completed. Route it to OnMessage, which calls Open, so the process gets the task id right away.
+XData MessageMap
+{
+<MapItems>
+  <MapItem MessageType="EnsLib.Workflow.TaskRequest">
+    <Method>OnMessage</Method>
+  </MapItem>
+</MapItems>
+}
+
 Method OnMessage(pRequest As %Library.Persistent, Output pResponse As %Library.Persistent) As %Status
 {
     Set pResponse = ##class(Finish.Message.WorkflowReply).%New()
@@ -50,8 +61,15 @@ Method Complete(pRequest As Finish.Message.WorkflowCommand, Output pResponse As 
     If pRequest.WorkflowTaskId = "" Return $$$ERROR($$$GeneralError,"Workflow completion requires a task id.")
     Set task = ##class(EnsLib.Workflow.TaskResponse).%OpenId(pRequest.WorkflowTaskId,,.sc)
     If $$$ISERR(sc) || '$IsObject(task) Return $$$ERROR($$$GeneralError,"Workflow task "_pRequest.WorkflowTaskId_" was not found.")
-    Set body = task.%Message_$Char(10)_task.%Subject_$Char(10)_task.%Command
-    If (pRequest.Token '= "") && (task.%Command '= pRequest.Token) && '(body '[ ("token:"_pRequest.Token)) Return $$$ERROR($$$GeneralError,"This workflow task does not match the approval token.")
+    // EnsLib.Workflow.TaskResponse has no %Command; it lives on the original TaskRequest.
+    Set command = ""
+    Try {
+        Set command = task.%TaskStatus.Request.%Command
+    } Catch {
+        Set command = ""
+    }
+    Set body = task.%Message_$Char(10)_task.%Subject_$Char(10)_command
+    If (pRequest.Token '= "") && (command '= pRequest.Token) && '(body '[ ("token:"_pRequest.Token)) Return $$$ERROR($$$GeneralError,"This workflow task does not match the approval token.")
     If (pRequest.TaskId '= "") && (body '[ "task:") && '(body '[ ("task:"_pRequest.TaskId)) Return $$$ERROR($$$GeneralError,"This workflow task belongs to a different work item.")
     Try {
         Do ##class(EnsLib.Workflow.Engine).AssignTask(task,"_SYSTEM",.assigned)
@@ -60,6 +78,10 @@ Method Complete(pRequest As Finish.Message.WorkflowCommand, Output pResponse As 
     Set action = pRequest.Action
     If action = "" Set action = "Approve"
     Set sc = ##class(EnsLib.Workflow.Engine).CompleteTask(task, action)
+    // Open replies at once, so the task's response token is a nonce and CompleteTask cannot
+    // send a deferred response. CompleteTask has already marked the task complete; save it.
+    Set saved = task.%Save()
+    If $$$ISERR(saved) Return saved
     If $$$ISERR(sc) && '..TaskIsComplete(task.%Id()) Return sc
     Set pResponse.WorkflowTaskId = task.%Id()
     Set pResponse.Role = ..%ConfigName

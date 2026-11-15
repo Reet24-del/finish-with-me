@@ -18,13 +18,13 @@ sh scripts/setup-iris.sh
 docker compose up --build -d app
 ```
 
-Wait for IRIS to start before running the setup script. `scripts/setup-iris.sh` loads and compiles the classes, installs the gate file, creates the authenticated `/csp/user/finish` REST application, adds `_SYSTEM` to `Finish.Reviewer`, `Finish.Supervisor`, and `Finish.HumanReview`, runs `Finish.Gate.Rules.SmokeTest()`, and starts `Finish.Production`.
+Wait for IRIS to start before running the setup script. `scripts/setup-iris.sh` loads and compiles the classes, installs the gate file, creates the authenticated `/csp/user/finish` REST application, adds `_SYSTEM` to `Finish.Reviewer`, `Finish.Supervisor`, and `Finish.HumanReview`, runs `Finish.Gate.Rules.SmokeTest()`, seeds precedent rows, runs `Finish.Memory.Operation.Smoke()`, and starts `Finish.Production`. The memory smoke has not been executed for this revision.
 
 Open [http://localhost:4318](http://localhost:4318). The header shows **IRIS CONNECTED** once the health endpoint responds. That label confirms connectivity, not the quality of any proposal.
 
 A request to `POST /csp/user/finish/decide` must authenticate. For programmatic examples, read the credentials from your local environment rather than putting them in a URL, screenshot, or shell history.
 
-The InterSystems Package Manager manifest is `finish-with-me-iris` 0.3.0. It is not a substitute for the Docker setup above. What the module installs, and how to publish it, is in [docs/ipm.md](https://github.com/Reet24-del/finish-with-me/blob/main/docs/ipm.md). The package is not on the public registry.
+The InterSystems Package Manager manifest is `finish-with-me-iris` 0.4.0. It is not a substitute for the Docker setup above. What the module installs, and how to publish it, is in [docs/ipm.md](https://github.com/Reet24-del/finish-with-me/blob/main/docs/ipm.md). The package is not on the public registry.
 
 ## The path a work item takes
 
@@ -33,7 +33,7 @@ A work item enters `Finish.Production` as `Finish.Message.WorkItem` in one of tw
 - the Node app (or a manual client) posts to `/csp/user/finish/decide`;
 - `Finish.GitHubIssues` polls open issues and sends the issue straight into `Finish.DecisionProcess`.
 
-`Finish.DecisionProcess` then calls `Finish.AgentOperation` (`Finish.Agent.CompletionOperation`), which runs `Finish.Agent.CompletionAgent`. The agent has to call `InspectTask` first. That tool returns the task plus a completion contract for its profile. Then, except for study assessment, it calls `ChooseRoute` with one of three routes:
+`Finish.DecisionProcess` first asks `Finish.MemoryOperation` for similar finished blockers (`VECTOR_COSINE` over a lexical hash, not a semantic model), then calls `Finish.AgentOperation` (`Finish.Agent.CompletionOperation`), which runs `Finish.Agent.CompletionAgent`. That vector step has not been executed against a running IRIS instance. The agent has to call `InspectTask` first. That tool returns the task plus a completion contract for its profile. Then, except for study assessment, it calls `ChooseRoute` with one of three routes:
 
 - `repair`: prepare one source-grounded file replacement, a stuck-message repair, or a lesson with private grading rubrics, using `PrepareProject`, `PrepareRepair`, `PrepareLesson`, or `PrepareCandidate` for the receipt example;
 - `hint`: give one nudge and leave the task open;

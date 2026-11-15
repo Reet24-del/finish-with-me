@@ -34,6 +34,14 @@ then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_GATE_OK' "$setup_output" || exit 1
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
+Set sc = ##class(Finish.Memory.Operation).Smoke()
+If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) Halt }
+Halt
+IRIS
+then cat "$setup_output"; exit 1; fi
+cat "$setup_output"
+grep -q '^FINISH_MEMORY_OK' "$setup_output" || exit 1
+if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
 Do ##class(Ens.Director).StopProduction()
 Set sc = ##class(Ens.Director).StartProduction("Finish.Production")
 If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) } Else { Write "FINISH_PRODUCTION_OK",! }
