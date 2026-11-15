@@ -29,7 +29,7 @@ Method OnMessage(pRequest As Finish.Message.PrecedentRequest, Output pResponse A
 
 ClassMethod Lookup(pRequest As Finish.Message.PrecedentRequest, Output pResponse As Finish.Message.PrecedentResult) As %Status
 {
-    If '$IsObject(pResponse) Set pResponse = ##class(Finish.Message.PrecedentResult).%New()
+    If '$IsObject($Get(pResponse)) Set pResponse = ##class(Finish.Message.PrecedentResult).%New()
     Set matches = []
     Set pResponse.TopScore = 0
     Set pResponse.MatchesJson = "[]"
@@ -59,7 +59,7 @@ ClassMethod Lookup(pRequest As Finish.Message.PrecedentRequest, Output pResponse
 
 ClassMethod Store(pRequest As Finish.Message.PrecedentRequest, Output pResponse As Finish.Message.PrecedentResult) As %Status
 {
-    If '$IsObject(pResponse) Set pResponse = ##class(Finish.Message.PrecedentResult).%New()
+    If '$IsObject($Get(pResponse)) Set pResponse = ##class(Finish.Message.PrecedentResult).%New()
     If pRequest.TaskId = "" Return $$$ERROR($$$GeneralError,"A precedent needs a task id.")
     If pRequest.Profile = "" Return $$$ERROR($$$GeneralError,"A precedent needs a profile.")
     Set taskId = pRequest.TaskId
