@@ -68,9 +68,8 @@ Method Complete(pRequest As Finish.Message.WorkflowCommand, Output pResponse As 
     } Catch {
         Set command = ""
     }
-    Set body = task.%Message_$Char(10)_task.%Subject_$Char(10)_command
-    If (pRequest.Token '= "") && (command '= pRequest.Token) && '(body '[ ("token:"_pRequest.Token)) Return $$$ERROR($$$GeneralError,"This workflow task does not match the approval token.")
-    If (pRequest.TaskId '= "") && (body '[ "task:") && '(body '[ ("task:"_pRequest.TaskId)) Return $$$ERROR($$$GeneralError,"This workflow task belongs to a different work item.")
+    Set sc = ..CheckMatch(command, task.%Message, pRequest.Action, pRequest.Token, pRequest.TaskId)
+    If $$$ISERR(sc) Return sc
     Try {
         Do ##class(EnsLib.Workflow.Engine).AssignTask(task,"_SYSTEM",.assigned)
     } Catch {
@@ -134,6 +133,70 @@ Method FindTask(nonce As %String, Output error As %String) As %String
         If rs.%SQLCODE < 0 Set error = error_" "_rs.%Message
     }
     Return ""
+}
+
+/// Value of a "name:" line in a workflow message, or "" when the line is absent.
+ClassMethod Marker(message As %String(MAXLEN = ""), name As %String) As %String
+{
+    Set prefix = name_":"
+    For i=1:1:$Length(message,$Char(10)) {
+        Set line = $ZStrip($Piece(message,$Char(10),i),"<>W",$Char(13))
+        If $Extract(line,1,$Length(prefix)) = prefix Return $Extract(line,$Length(prefix)+1,*)
+    }
+    Return ""
+}
+
+/// The token must equal the task's %Command or its "token:" line; Approve always needs a token.
+/// When the task has a "task:" line, the work item id must equal it.
+ClassMethod CheckMatch(command As %String, message As %String(MAXLEN = ""), action As %String, token As %String, taskId As %String) As %Status
+{
+    Set tokenMarker = ..Marker(message,"token")
+    Set taskMarker = ..Marker(message,"task")
+    If (token = "") && ((action = "") || (action = "Approve")) Return $$$ERROR($$$GeneralError,"Workflow approval requires the approval token.")
+    If token '= "" {
+        Set matched = ((command '= "") && (command = token)) || ((tokenMarker '= "") && (tokenMarker = token))
+        If 'matched Return $$$ERROR($$$GeneralError,"This workflow task does not match the approval token.")
+    }
+    If (taskMarker '= "") && (taskId '= taskMarker) Return $$$ERROR($$$GeneralError,"This workflow task belongs to a different work item.")
+    Return $$$OK
+}
+
+/// Opens a real Finish.Reviewer task through the running production, then sends a wrong token,
+/// a wrong work item id, and the correct pair. Prints FINISH_WORKFLOW_CHECKS_OK when only the correct pair completes.
+ClassMethod SmokeChecks() As %Status
+{
+    Set sc = ##class(Ens.Director).CreateBusinessService("Finish.DecisionService",.service)
+    If $$$ISERR(sc) Return sc
+    Set token = $ZConvert($Translate($System.Util.CreateGUID(),"-",""),"L")
+    Set taskId = "smoke-workflow-"_$Extract(token,1,8)
+    Set request = ##class(EnsLib.Workflow.TaskRequest).%New()
+    Set request.%Actions = "Approve,Reject"
+    Set request.%UserName = "_SYSTEM"
+    Set request.%Subject = "Workflow check smoke"
+    Set request.%Command = token
+    Set request.%Message = "token:"_token_$Char(10)_"task:"_taskId_$Char(10)_"profile:integration"
+    Set sc = service.SendRequestSync("Finish.Reviewer",request,.opened,30,"Workflow check smoke: open")
+    If $$$ISERR(sc) Return sc
+    If '$IsObject(opened) || (opened.WorkflowTaskId = "") Return $$$ERROR($$$GeneralError,"Smoke task did not open.")
+    Set cases = $ListBuild($ListBuild("wrong token","wrong-"_token,taskId,0),$ListBuild("wrong task id",token,"other-task",0),$ListBuild("missing token","",taskId,0),$ListBuild("correct token and task id",token,taskId,1))
+    For i=1:1:$ListLength(cases) {
+        Set case = $List(cases,i)
+        Set cmd = ##class(Finish.Message.WorkflowCommand).%New()
+        Set cmd.Command = "complete"
+        Set cmd.WorkflowTaskId = opened.WorkflowTaskId
+        Set cmd.DistributionToken = opened.DistributionToken
+        Set cmd.Action = "Approve"
+        Set cmd.Token = $List(case,2)
+        Set cmd.TaskId = $List(case,3)
+        Set cmd.TraceSummary = "Workflow check smoke: "_$List(case,1)
+        Kill reply
+        Set sent = service.SendRequestSync("Finish.Reviewer",cmd,.reply,30,"Workflow check smoke: "_$List(case,1))
+        Set completed = $$$ISOK(sent) && $IsObject($Get(reply)) && (reply.State = "complete")
+        Write $List(case,1),": ",$Select(completed:"completed",1:"rejected ("_$System.Status.GetOneErrorText(sent)_")"),!
+        If completed '= $List(case,4) Return $$$ERROR($$$GeneralError,"Workflow check smoke failed for "_$List(case,1)_".")
+    }
+    Write "FINISH_WORKFLOW_CHECKS_OK",!
+    Return $$$OK
 }
 
 Method TaskIsComplete(taskId As %String) As %Boolean

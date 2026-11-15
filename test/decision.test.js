@@ -54,3 +54,13 @@ test('integration profile is a real task and still refuses a local decision', as
   assert.equal(task.profile, 'integration');
   assert.throws(() => localInvestigate(task), /Connect IRIS/);
 });
+
+test('a fallback (no AI Hub) decision is accepted and keeps its label, and unknown providers are rejected', () => {
+  const task = createTask({kind:'coding', profile:'integration', title:'Example: Stuck transform', source:'ERROR #5001: Transform failed\nField RequiredField is empty', blocker:'Message 1042 is stuck.', criteria:'Replay the message.'});
+  const proposal = {provider:'fallback (no AI Hub)', toolsUsed:['InspectTask','ChooseRoute','PrepareRepair'], decision:{summary:'fallback (no AI Hub): deterministic repair.', nextAction:'Map RequiredField.', artifact:'Populate RequiredField before the transform.', verification:'Replay message 1042.'}};
+  applyIrisInvestigate(task, gate('needs-evidence', proposal));
+  assert.equal(task.proposal.provider, 'fallback (no AI Hub)');
+  assert.equal(task.status, 'active');
+  const other = createTask({kind:'coding', title:'x', source:'y', blocker:'z', criteria:'w'});
+  assert.throws(() => applyIrisInvestigate(other, gate('needs-evidence', {...proposal, provider:'Some other model'})), /production decision/);
+});

@@ -1,4 +1,5 @@
 import { groqDecision } from './groq.js';
+import { isIrisProvider } from './providers.js';
 import { hash, event } from './domain.js';
 import { fingerprint, isGeneral, applyRouting, applyWork, applyAssessment } from './general.js';
 import { applyIrisInvestigate, applyIrisCheck, applyIrisVerify, applyIrisAssessment, applyIrisHuman } from './decision.js';
@@ -17,7 +18,7 @@ async function postDecide(payload) {
     throw Error(detail);
   }
   const data = await response.json();
-  if (data.provider !== 'InterSystems IRIS AI Hub' || typeof data.outcome !== 'string' || !data.gate) throw Error('IRIS did not return a production decision.');
+  if (!isIrisProvider(data.provider) || typeof data.outcome !== 'string' || !data.gate) throw Error('IRIS did not return a production decision.');
   return data;
 }
 

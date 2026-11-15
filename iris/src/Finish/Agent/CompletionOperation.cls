@@ -1,6 +1,7 @@
 Include Ensemble
 
 /// Calls Finish.Agent.CompletionAgent. Prompt, route, and reply are message fields, and each step is also sent to the trace recorder.
+/// On an IRIS image without AI Hub (%AI.Agent), it calls Finish.Agent.FallbackAgent instead and labels every field "fallback (no AI Hub)".
 Class Finish.Agent.CompletionOperation Extends Ens.BusinessOperation
 {
 
@@ -9,6 +10,7 @@ Parameter INVOCATION = "Queue";
 Method OnMessage(pRequest As Finish.Message.AgentCall, Output pResponse As Finish.Message.AgentResult) As %Status
 {
     Set started = $ZH
+    If '##class(Finish.Agent.FallbackAgent).AIHubAvailable() Return ..Fallback(pRequest, .pResponse, started)
     Set agent = ""
     Set session = ""
     Try {
@@ -92,6 +94,47 @@ Method OnMessage(pRequest As Finish.Message.AgentCall, Output pResponse As Finis
         } Catch {
         }
         Do ##class(Finish.Trace.Recorder).Record($This,"AgentError",failure)
+        Return ex.AsStatus()
+    }
+}
+
+/// Deterministic path for images without AI Hub. Same message shapes, clearly labeled, never an LLM.
+Method Fallback(pRequest As Finish.Message.AgentCall, Output pResponse As Finish.Message.AgentResult, started As %Double) As %Status
+{
+    Try {
+        Set payload = pRequest.Payload
+        If '$IsObject(payload) Set payload = {}
+        Do ##class(Finish.Trace.Recorder).Record($This,"Fallback agent start (no AI Hub)",payload)
+        Set target = pRequest.TargetTool
+        If target = "" Set target = ..TargetFor(payload)
+        Set result = ##class(Finish.Agent.FallbackAgent).Propose(payload, target)
+        Set pResponse = ##class(Finish.Message.AgentResult).%New()
+        Set pResponse.TaskId = pRequest.TaskId
+        Set pResponse.Provider = ##class(Finish.Agent.FallbackAgent).#PROVIDER
+        Set pResponse.Model = ##class(Finish.Agent.FallbackAgent).#MODEL
+        Set pResponse.PromptVersion = "finish-fallback-1"
+        Set pResponse.Prompt = "fallback (no AI Hub): no prompt is sent to a model."
+        Set pResponse.Reply = result.%Get("reply")
+        Set pResponse.ToolsUsed = result.%Get("tools").%ToJSON()
+        Set route = result.%Get("route")
+        Set pResponse.RouteJson = route.%ToJSON()
+        Set proposal = result.%Get("proposal")
+        Set pResponse.ProposalJson = $Select($IsObject(proposal):proposal.%ToJSON(),1:"{}")
+        Set pResponse.ToolTrace = "fallback (no AI Hub): InspectTask, ChooseRoute "_route.%Get("action")_$Select($IsObject(proposal):", "_target,1:"")
+        Set pResponse.InputTokens = 0
+        Set pResponse.OutputTokens = 0
+        Set pResponse.LatencyMs = $NORMALIZE(($ZH-started)*1000,0)
+        Set traced = {}
+        Do traced.%Set("provider",pResponse.Provider)
+        Do traced.%Set("model",pResponse.Model)
+        Do traced.%Set("route",route)
+        Do traced.%Set("toolsUsed",result.%Get("tools"))
+        Do ##class(Finish.Trace.Recorder).Record($This,"Fallback agent result (no AI Hub)",traced)
+        Set pResponse.TraceSummary = "fallback (no AI Hub) route "_route.%Get("action")_" tools "_pResponse.ToolsUsed
+        $$$TRACE(pResponse.TraceSummary)
+        Return $$$OK
+    } Catch ex {
+        Do ##class(Finish.Trace.Recorder).Record($This,"Fallback agent error (no AI Hub)",{"error":(ex.DisplayString())})
         Return ex.AsStatus()
     }
 }

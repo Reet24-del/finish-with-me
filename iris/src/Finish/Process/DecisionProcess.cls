@@ -38,16 +38,18 @@ Method Decide(pRequest As Finish.Message.WorkItem, Output pResponse As Finish.Me
         Set call.PromptVersion = "finish-decision-1"
         Set call.Prompt = ..AgentPrompt(call.TargetTool)
         Set call.Payload = ..CopyPayload(pRequest)
-        Set call.TraceSummary = "AI Hub input for "_call.TargetTool_" on "_pRequest.TaskId
+        Set aiHub = ##class(Finish.Agent.FallbackAgent).AIHubAvailable()
+        Set agentLabel = $Select(aiHub:"AI Hub agent call: ",1:"Fallback agent (no AI Hub): ")_call.TargetTool
+        Set call.TraceSummary = $Select(aiHub:"AI Hub input for ",1:"fallback (no AI Hub) input for ")_call.TargetTool_" on "_pRequest.TaskId
         Try {
             Do ..AttachPrecedents(pRequest, call)
         } Catch ex {
             $$$TRACE("Precedent lookup skipped: "_ex.DisplayString())
         }
         $$$TRACE(call.TraceSummary)
-        Set sc = ..SendRequestSync("Finish.AgentOperation", call, .agentResp, 90, "AI Hub agent call: "_call.TargetTool)
+        Set sc = ..SendRequestSync("Finish.AgentOperation", call, .agentResp, 90, agentLabel)
         If $$$ISERR(sc) Return sc
-        If '$IsObject(agentResp) Return $$$ERROR($$$GeneralError,"The AI Hub operation returned no message.")
+        If '$IsObject(agentResp) Return $$$ERROR($$$GeneralError,"The agent operation returned no message.")
         Set proposalJson = agentResp.ProposalJson
         Set toolsJson = agentResp.ToolsUsed
         Set routeJson = agentResp.RouteJson
@@ -63,7 +65,7 @@ Method Decide(pRequest As Finish.Message.WorkItem, Output pResponse As Finish.Me
         Set pResponse.UsageJson = agentResp.UsageJson
         $$$TRACE("Agent result model "_agentResp.Model_" tokens "_agentResp.InputTokens_"/"_agentResp.OutputTokens_" latency "_agentResp.LatencyMs)
     } Else {
-        Set pResponse.Provider = "InterSystems IRIS AI Hub"
+        Set pResponse.Provider = ..ProviderLabel()
         Set routeJson = ""
     }
     Set pResponse.ProposalJson = proposalJson
@@ -104,7 +106,7 @@ Method Decide(pRequest As Finish.Message.WorkItem, Output pResponse As Finish.Me
 
 Method HumanDecision(pRequest As Finish.Message.WorkItem, Output pResponse As Finish.Message.Decision) As %Status
 {
-    Set pResponse.Provider = "InterSystems IRIS AI Hub"
+    Set pResponse.Provider = ..ProviderLabel()
     If pRequest.WorkflowTaskId = "" Return $$$ERROR($$$GeneralError,"Approve or reject through the workflow task the gate opened.")
     Set gateReq = ##class(Finish.Message.GateRequest).%New()
     Set gateReq.TaskId = pRequest.TaskId
@@ -150,6 +152,11 @@ Method HumanDecision(pRequest As Finish.Message.WorkItem, Output pResponse As Fi
     Set pResponse.TraceSummary = pResponse.Outcome_": "_$Extract(pResponse.Reason,1,300)
     $$$TRACE(pResponse.TraceSummary)
     Return $$$OK
+}
+
+Method ProviderLabel() As %String
+{
+    Return $Select(##class(Finish.Agent.FallbackAgent).AIHubAvailable():"InterSystems IRIS AI Hub",1:##class(Finish.Agent.FallbackAgent).#PROVIDER)
 }
 
 Method OpenWorkflow(pRequest As Finish.Message.WorkItem, gateResp As Finish.Message.GateResult, role As %String, Output pReply As Finish.Message.WorkflowReply) As %Status

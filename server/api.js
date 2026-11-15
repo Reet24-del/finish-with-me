@@ -1,4 +1,5 @@
 import {checkWithIris as checkReceiptAst,importedIssues} from './native-checker.js';
+import { isIrisProvider } from './providers.js';
 import { groqConfigured } from './groq.js';
 import { createTask, invalidate, localInvestigate, runChecks, approve, answerStudy, publicTask, event, hash } from './domain.js';
 import { isGeneral, recordProjectEvidence, applyRouting, applyWork } from './general.js';
@@ -15,14 +16,14 @@ export function api(store,{database=null}={}) {
     if(!path.startsWith('/api/'))return next();
     try {
       if(req.method==='GET'&&path==='/api/health'){
-        let irisVerified=false,storageVerified=!process.env.DATABASE_URL;
+        let irisVerified=false,irisProvider=null,storageVerified=!process.env.DATABASE_URL;
         if(database)try{await database.pool.query({text:'SELECT 1',query_timeout:2500});storageVerified=true;}catch{}
         if(process.env.AI_BACKEND!=='groq'&&process.env.IRIS_BASE_URL)try{
           const headers={};if(process.env.IRIS_USERNAME&&process.env.IRIS_PASSWORD)headers.Authorization='Basic '+Buffer.from(`${process.env.IRIS_USERNAME}:${process.env.IRIS_PASSWORD}`).toString('base64');
           const response=await fetch(new URL('health',process.env.IRIS_BASE_URL.endsWith('/')?process.env.IRIS_BASE_URL:process.env.IRIS_BASE_URL+'/'),{headers,signal:AbortSignal.timeout(1800)});
-          irisVerified=response.ok&&(await response.json()).provider==='InterSystems IRIS AI Hub';
+          if(response.ok){const body=await response.json();irisVerified=isIrisProvider(body.provider);if(irisVerified)irisProvider=body.provider;}
         }catch{}
-        return json(res,storageVerified?200:503,{ok:storageVerified,storageVerified,mode:process.env.AI_BACKEND==='groq'?'groq-configured':process.env.IRIS_BASE_URL?'iris-configured':'local',aiReady:irisVerified||groqConfigured(),aiProvider:groqConfigured()?'Groq (hosted)':irisVerified?'InterSystems IRIS AI Hub':null,irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',storage:process.env.DATABASE_URL?'postgres':process.env.RENDER?'ephemeral':'local-disk',capabilities:['project','subject','integration','receipt-total','linear-equations'],message:groqConfigured()?'Hosted Groq is configured; the IRIS production is a separate local mode.':irisVerified?'IRIS production Finish.Production is responding. Completion is decided there.':'Local guided completion is ready; configure AI Hub for live decisions.'});
+        return json(res,storageVerified?200:503,{ok:storageVerified,storageVerified,mode:process.env.AI_BACKEND==='groq'?'groq-configured':process.env.IRIS_BASE_URL?'iris-configured':'local',aiReady:irisVerified||groqConfigured(),aiProvider:groqConfigured()?'Groq (hosted)':irisVerified?irisProvider:null,irisVerified,hostedDemo:process.env.HOSTED_DEMO==='true',storage:process.env.DATABASE_URL?'postgres':process.env.RENDER?'ephemeral':'local-disk',capabilities:['project','subject','integration','receipt-total','linear-equations'],message:groqConfigured()?'Hosted Groq is configured; the IRIS production is a separate local mode.':irisVerified?'IRIS production Finish.Production is responding. Completion is decided there.':'Local guided completion is ready; configure AI Hub for live decisions.'});
       }
       if(req.method==='GET'&&path==='/api/tasks'){await store.queue;if(store.refresh)await store.refresh();return json(res,200,{tasks:store.data.tasks.map(publicTask)});}
       if(req.method!=='POST')return json(res,404,{error:'Route not found.'});
