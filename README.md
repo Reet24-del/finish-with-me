@@ -2,7 +2,7 @@
 
 An integration team runs an HL7 feed through an IRIS transform. Every few days a message lands in error status because a required field arrived empty, and the person on call has to dig through the trace, guess at a fix, replay the message, and remember to tell someone it was done. Finish With Me turns that stuck message into a work item inside an IRIS Interoperability production. The production looks up similar blockers that were finished before (IRIS Vector Search), an agent proposes one bounded repair, a deterministic IRIS gate checks the proposal and the recorded replay evidence, and a person approves the result in the Workflow Engine. The agent proposes, IRIS decides, a human approves, and the finished fix becomes a precedent for the next one.
 
-![Demo of the stuck-transform example](docs/demo.gif)
+![Terminal recording of a real stuck-transform run against IRIS (scripts/demo.sh)](docs/demo.gif)
 
 ## Quick start
 
@@ -39,7 +39,36 @@ flowchart LR
     P -.->|every step| T[Finish.TraceOperation]
 ```
 
-![Visual Trace of a stuck-transform session](docs/visual-trace.png)
+### Message sequence from a real run
+
+`sh scripts/demo.sh` runs **Example: Stuck transform** through the REST endpoint and prints these rows from `Ens.MessageHeader` (trace events and plain `Ens.Response` acknowledgements omitted). This run used the public IRIS 2026.3 image, so the agent step is the fallback (no AI Hub). The precedent lookup's top score was 0.886 (`seed-integration-required-field`), the workflow task was `Finish.Reviewer` task 33, and the precedent count went from 6 to 7. The GIF above is the terminal recording of the same run.
+
+| Session | Source | Target | Message class | Description |
+| --- | --- | --- | --- | --- |
+| 12 | Finish.DecisionService | Finish.DecisionProcess | Finish.Message.WorkItem | Work item stuck-transform-demo investigate integration Example: Stuck transform |
+| 12 | Finish.DecisionProcess | Finish.MemoryOperation | Finish.Message.PrecedentRequest | Similar finished blockers |
+| 12 | Finish.MemoryOperation | Finish.DecisionProcess | Finish.Message.PrecedentResult | |
+| 12 | Finish.DecisionProcess | Finish.AgentOperation | Finish.Message.AgentCall | Fallback agent (no AI Hub): PrepareRepair |
+| 12 | Finish.AgentOperation | Finish.DecisionProcess | Finish.Message.AgentResult | |
+| 12 | Finish.DecisionProcess | Finish.GateOperation | Finish.Message.GateRequest | Deterministic completion gate |
+| 12 | Finish.GateOperation | Finish.DecisionProcess | Finish.Message.GateResult | |
+| 12 | Finish.DecisionProcess | Finish.DecisionService | Finish.Message.Decision | |
+| 28 | Finish.DecisionService | Finish.DecisionProcess | Finish.Message.WorkItem | Work item stuck-transform-demo verify integration Example: Stuck transform |
+| 28 | Finish.DecisionProcess | Finish.GateOperation | Finish.Message.GateRequest | Deterministic completion gate |
+| 28 | Finish.GateOperation | Finish.DecisionProcess | Finish.Message.GateResult | |
+| 28 | Finish.DecisionProcess | Finish.Reviewer | EnsLib.Workflow.TaskRequest | Workflow Engine Finish.Reviewer |
+| 28 | Finish.Reviewer | Finish.DecisionProcess | Finish.Message.WorkflowReply | |
+| 28 | Finish.DecisionProcess | Finish.DecisionService | Finish.Message.Decision | |
+| 40 | Finish.DecisionService | Finish.DecisionProcess | Finish.Message.WorkItem | Work item stuck-transform-demo approve integration Example: Stuck transform |
+| 40 | Finish.DecisionProcess | Finish.GateOperation | Finish.Message.GateRequest | Deterministic gate before workflow completion |
+| 40 | Finish.GateOperation | Finish.DecisionProcess | Finish.Message.GateResult | |
+| 40 | Finish.DecisionProcess | Finish.Reviewer | Finish.Message.WorkflowCommand | Workflow Engine Approve |
+| 40 | Finish.Reviewer | Finish.DecisionProcess | Finish.Message.WorkflowReply | |
+| 40 | Finish.DecisionProcess | Finish.MemoryOperation | Finish.Message.PrecedentRequest | Store finished blocker |
+| 40 | Finish.MemoryOperation | Finish.DecisionProcess | Finish.Message.PrecedentResult | |
+| 40 | Finish.DecisionProcess | Finish.DecisionService | Finish.Message.Decision | |
+
+Open Interoperability > Messages > Visual Trace on your instance to see this graphically.
 
 An IRIS Interoperability production routes a stuck work item to an AI Hub agent; the agent proposes a bounded action; a deterministic IRIS gate and a Workflow Engine human approval decide completion.
 
@@ -283,4 +312,4 @@ These match what is in the repository. Points are not claimed as awarded. Rules:
 | IPM / ZPM | 2 | [Manifest](module.xml) is `finish-with-me-iris` 0.5.0, requires IRIS `>=2026.3` with Interoperability, and packages `iris/src` (including `Finish.Memory`) plus `iris/gate`, and loads `iris/aihub` only when `%AI.Agent` exists. Contest command: `zpm "install finish-with-me-iris"`. Publish steps: [docs/ipm.md](docs/ipm.md). Loaded with IPM 0.10.10 `zpm "load"` on IRIS 2026.3 (fallback path). |
 | Online demo | 2 | [Public site](https://finish-with-me.onrender.com/) is hosted Groq or local examples, not this IRIS production. |
 
-The questionnaire and the two Developer Community articles are drafts in `docs/` and are not submitted or published, so they are not listed as implemented bonuses. No PEX or vendor-bug claim is made. The [bonus comment draft](docs/bonus-claim-draft.md) has not been posted.
+The two Developer Community articles are published: [Finish With Me: the AI agent proposes, IRIS decides when work is done](https://community.intersystems.com/post/finish-me-ai-agent-proposes-iris-decides-when-work-is-done) and [Reproducing a Workflow Engine approval loop for an AI agent, locally with Docker](https://community.intersystems.com/post/reproducing-workflow-engine-approval-loop-ai-agent-locally-docker). Video: [YouTube walkthrough](https://www.youtube.com/watch?v=aBBQBlfhaA8). Package: [Finish With Me on Open Exchange](https://openexchange.intersystems.com/package/Finish-With-Me). No PEX or vendor-bug claim is made.
