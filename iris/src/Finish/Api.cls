@@ -21,7 +21,9 @@ ClassMethod Health() As %Status
     Set %response.ContentType = "application/json; charset=utf-8"
     Set body = {}
     Do body.%Set("ok",1,"boolean")
-    Do body.%Set("provider","InterSystems IRIS AI Hub")
+    Set aiHub = ##class(Finish.Agent.FallbackAgent).AIHubAvailable()
+    Do body.%Set("provider",$Select(aiHub:"InterSystems IRIS AI Hub",1:##class(Finish.Agent.FallbackAgent).#PROVIDER))
+    Do body.%Set("aiHub",aiHub,"boolean")
     Do body.%Set("production","Finish.Production")
     Do body.%Set("decision","Finish.DecisionProcess")
     Do body.%Set("gate","embedded-python")

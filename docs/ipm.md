@@ -1,6 +1,6 @@
 # Publish finish-with-me-iris
 
-`finish-with-me-iris` 0.4.0 is not on the public IPM registry. Publishing needs the owner's Open Exchange account and a running InterSystems IRIS with the IPM client. This repository change did not load or publish the module.
+`finish-with-me-iris` 0.5.0 is not on the public IPM registry. Publishing needs the owner's Open Exchange account and a running InterSystems IRIS with the IPM client. This repository change did not load or publish the module.
 
 The contest check is:
 
@@ -19,6 +19,7 @@ Judges run that on the 154 AI Hub build. The module refuses earlier IRIS version
 `zpm "load"` and `zpm "install"` both read `module.xml`.
 
 - `Finish.PKG` is loaded from `iris/src` and compiled. That is the REST dispatcher, decision production, precedent classes `Finish.Memory.Precedent`, `Finish.Memory.Embed`, and `Finish.Memory.Operation`, AI Hub operation, workflow classes, trace recorder, GitHub adapter, and the Embedded Python class `Finish.Check.Receipt`.
+- The AI Hub agent classes `Finish.Agent.CompletionAgent` and `Finish.Agent.TaskTools` live in `iris/aihub`, outside `Finish.PKG`, because they extend `%AI.Agent` and `%AI.Tool`. During Activate, IPM copies `iris/aihub/` to `<manager-directory>/finish-with-me/aihub/` and calls `Finish.Install.LoadAIHub`. On an AI Hub image that prints `FINISH_AIHUB_OK` and compiles both classes. On an image without `%AI.Agent` it prints `FINISH_AIHUB_SKIPPED`, and `Finish.AgentOperation` uses `Finish.Agent.FallbackAgent`, a deterministic agent labeled `fallback (no AI Hub)`. Verified with IPM 0.10.10 `zpm "load"` on the public IRIS 2026.3 preview image (fallback path only).
 - During Activate, IPM copies the directory `iris/gate/` to `<manager-directory>/finish-with-me/gate/`. That copy includes `engine.py` and `test_engine.py`. `Finish.Gate.Rules` uses this `engine.py` when `/durable/finish/gate_engine.py` is absent. `FINISH_GATE_FILE` overrides both.
 - IPM does not run `test_engine.py`. The `<UnitTest>` element runs ObjectScript `%UnitTest` classes, and this file is a CPython unittest. Run it from a checkout:
 
@@ -92,7 +93,7 @@ zpm "repo -n registry -url https://pm.community.intersystems.com"
 After Open Exchange has published the module:
 
 1. `zpm "find finish-with-me-iris"` lists 0.4.0 from `https://pm.community.intersystems.com`.
-2. On a clean namespace, `zpm "install finish-with-me-iris -v"` finishes Activate with SUCCESS, and `zpm "list"` shows `finish-with-me-iris` 0.4.0.
+2. On a clean namespace, `zpm "install finish-with-me-iris -v"` finishes Activate with SUCCESS, and `zpm "list"` shows `finish-with-me-iris` 0.5.0.
 3. The same install on IRIS older than 2026.3 is refused by `SystemRequirements` before the classes load.
 4. The same install in a namespace without Interoperability is refused.
 5. `<manager-directory>/finish-with-me/gate/engine.py` and `test_engine.py` exist. `Finish.Production` is compiled and is not started by the module.

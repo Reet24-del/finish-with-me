@@ -2,6 +2,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 command -v docker >/dev/null 2>&1 || { echo 'Install and start Docker Desktop first.' >&2; exit 1; }
+docker compose exec -T -u 0 iris rm -rf /tmp/finish-src
 docker compose cp iris/src/. iris:/tmp/finish-src
 docker compose exec -T iris mkdir -p /durable/finish
 docker compose cp iris/gate/engine.py iris:/durable/finish/gate_engine.py
@@ -16,6 +17,18 @@ IRIS
 then cat "$setup_output"; exit 1; fi
 cat "$setup_output"
 grep -q '^FINISH_CLASSES_OK' "$setup_output" || exit 1
+# AI Hub agent classes compile only on images with %AI.Agent (the 2027.1 AI Hub build).
+# Elsewhere LoadAIHub prints FINISH_AIHUB_SKIPPED and the fallback (no AI Hub) agent is used.
+docker compose exec -T -u 0 iris rm -rf /tmp/finish-aihub
+docker compose cp iris/aihub/. iris:/tmp/finish-aihub
+if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
+Set sc = ##class(Finish.Install).LoadAIHub("/tmp/finish-aihub")
+If $System.Status.IsError(sc) { Write $System.Status.GetErrorText(sc),! }
+Halt
+IRIS
+then cat "$setup_output"; exit 1; fi
+cat "$setup_output"
+grep -Eq '^FINISH_AIHUB_(OK|SKIPPED)' "$setup_output" || exit 1
 if ! docker compose exec -T iris iris session IRIS -U USER > "$setup_output" <<'IRIS'
 Set sc = ##class(Finish.Install).Configure()
 If $System.Status.IsError(sc) { Do $System.Status.DisplayError(sc) } Else { Write "FINISH_REST_OK",! }

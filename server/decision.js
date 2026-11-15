@@ -1,3 +1,4 @@
+import { isIrisProvider } from './providers.js';
 import { event, hash } from './domain.js';
 import { applyRouting, applyWork } from './general.js';
 
@@ -158,7 +159,7 @@ function remember(task, data) {
 }
 
 function assertDecision(data) {
-  if (data?.provider !== 'InterSystems IRIS AI Hub' || typeof data?.outcome !== 'string' || !data.gate || typeof data.gate !== 'object') {
+  if (!isIrisProvider(data?.provider) || typeof data?.outcome !== 'string' || !data.gate || typeof data.gate !== 'object') {
     throw Error('IRIS did not return a production decision.');
   }
 }

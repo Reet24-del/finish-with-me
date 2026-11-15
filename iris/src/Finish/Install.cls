@@ -77,6 +77,20 @@ ClassMethod EnsureMembership(role As %String, user As %String, title As %String)
     Return sc
 }
 
+/// Load the AI Hub agent classes (iris/aihub) only when this IRIS image has %AI.Agent and %AI.Tool.
+/// Without them, Finish.AgentOperation uses Finish.Agent.FallbackAgent, labeled "fallback (no AI Hub)".
+ClassMethod LoadAIHub(dir As %String) As %Status
+{
+    If '##class(%Dictionary.CompiledClass).%ExistsId("%AI.Agent") || '##class(%Dictionary.CompiledClass).%ExistsId("%AI.Tool") {
+        Write "FINISH_AIHUB_SKIPPED no %AI.Agent on this image; Finish.AgentOperation uses the fallback (no AI Hub) agent",!
+        Return $$$OK
+    }
+    Set sc = $System.OBJ.LoadDir(dir,"ck",,1)
+    If $$$ISERR(sc) Return sc
+    Write "FINISH_AIHUB_OK CompletionAgent and TaskTools loaded",!
+    Return $$$OK
+}
+
 /// Insert the example resolutions once. A task id that is already stored is left as it is.
 ClassMethod SeedPrecedents() As %Status
 {

@@ -3,14 +3,18 @@
   <Document name="finish-with-me-iris.ZPM">
     <Module>
       <Name>finish-with-me-iris</Name>
-      <Version>0.4.0</Version>
+      <Version>0.5.0</Version>
       <Packaging>module</Packaging>
-      <Description>IRIS decision production: CompletionAgent routing, precedent vector search, Embedded Python gate, Workflow review, trace recorder, and GitHub inbound adapter.</Description>
+      <Description>IRIS decision production: CompletionAgent routing (AI Hub) or a labeled deterministic fallback agent, precedent vector search, Embedded Python gate, Workflow review, trace recorder, and GitHub inbound adapter.</Description>
       <License>MIT</License>
       <SystemRequirements Version=">=2026.3" Interoperability="enabled"/>
       <SourcesRoot>iris/src</SourcesRoot>
       <Resource Name="Finish.PKG" Directory="iris/src"/>
-      <FileCopy Name="iris/gate/" Target="${mgrDir}finish-with-me/gate/" Overlay="true"/>
+      <FileCopy Name="iris/gate/" Target="${mgrDir}finish-with-me/gate/" Overlay="1"/>
+      <FileCopy Name="iris/aihub/" Target="${mgrDir}finish-with-me/aihub/" Overlay="1"/>
+      <Invoke Class="Finish.Install" Method="LoadAIHub" Phase="Activate" When="After" CheckStatus="true">
+        <Arg>${mgrDir}finish-with-me/aihub/</Arg>
+      </Invoke>
     </Module>
   </Document>
 </Export>
