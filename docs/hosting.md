@@ -15,7 +15,7 @@ Live IRIS AI Hub requires a separately hosted, licensed IRIS AI Hub service reac
 
 For durable production use, add real authentication, a durable database and operational limits before expanding this public demo. A paid persistent disk alone is not user authentication.
 
-Demo video: https://www.youtube.com/watch?v=aBBQBlfhaA8
+Demo video: https://youtu.be/6iwGSDDGXsU
 
 ## Pages and deep links
 
