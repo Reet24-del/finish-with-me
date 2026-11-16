@@ -31,7 +31,7 @@ Actual AI Hub build, provider/model, run date, production trace/session, tool ca
 
 ## Uploaded demo video
 
-https://www.youtube.com/watch?v=aBBQBlfhaA8
+https://youtu.be/6iwGSDDGXsU
 
 Added to the GitHub README. Updating the dedicated Open Exchange YouTube field remains pending.
 
